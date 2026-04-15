@@ -1,0 +1,136 @@
+城市空气质量全景洞察系统 (主应用)
+│
+├── 1. 数据洞察大屏 (Dashboard - 默认首页)
+│   ├── 1.1 全局控制台 (过滤组件)
+│   │   ├── 城市多选器
+│   │   └── 时间维度选择器 (本周/本月/全年)
+│   ├── 1.2 核心指标概览 (KPI Cards)
+│   │   ├── 平均 AQI
+│   │   ├── PM2.5 / PM10 均值
+│   │   └── 优良天数占比
+│   ├── 1.3 趋势与对比分析 (图表区)
+│   │   ├── 多城市 AQI 时序趋势 (折线图)
+│   │   ├── 核心污染物占比结构 (雷达图/环形图)
+│   │   └── 城市达标天数横向对比 (柱状图)
+│
+├── 2. 数据明细中心 (Data Center)
+│   ├── 2.1 原始数据查询
+│   │   └── 分页表格 (支持按城市、日期、污染级别检索)
+│   ├── 2.2 数据导出
+│   │   └── 导出当前查询结果 (CSV/Excel格式模拟)
+│
+└── 3. 关于项目 (About Project - 大创加分项)
+    ├── 3.1 项目背景与研究目标
+    ├── 3.2 技术栈与创新点 (Vue3 + Tailwind 展示)
+    └── 3.3 团队成员介绍
+
+一、 视觉排版与色彩规范 (Visual & Typography)
+既然要求以白色系为主，且要显得炫酷，我们应采用“极简留白 + 数据高亮 + 微拟态/毛玻璃”的设计风格。
+
+主色调 (Primary): 纯白 #FFFFFF (背景) 和 极浅灰 #F8FAFC (Tailwind: bg-slate-50，用于区块划分)。
+
+文字色 (Text): 深灰 #1E293B (text-slate-800 用于主标题)，中灰 #64748B (text-slate-500 用于副标题和轴标签)。
+
+点缀色/数据色 (Accent): 采用渐变色或鲜明色彩来区分空气质量：
+
+优 (AQI < 50): 渐变青绿 (from-emerald-400 to-teal-400)
+
+良 (AQI 51-100): 渐变亮黄 (from-yellow-300 to-amber-400)
+
+轻度污染 (AQI 101-150): 渐变橙红 (from-orange-400 to-rose-400)
+
+视觉风格: 卡片化设计（Card-based UI），带有轻微的阴影 (shadow-sm 到 shadow-md），以及在数据悬浮时的毛玻璃效果（backdrop-blur）。
+
+二、 页面布局与核心元素 (Layout & Core Elements)
+采用经典的仪表盘（Dashboard）自适应布局：顶部导航栏 + 核心数据概览 + 图表分析区。
+
+1. 顶部导航区 (Header)
+核心元素: 项目 Logo/标题（“城市空气质量全景洞察”）、当前系统时间（动态跳动）、深浅色模式切换按钮（预留扩展）、Github仓库链接。
+
+2. 全局控制台 (Filter Panel)
+核心元素:
+
+城市选择器 (Select): 支持多选对比（如：北京、上海、广州）。
+
+时间维度 (Date Picker): 本周、本月、全年，或自定义时间段。
+
+布局: 横向平铺在数据卡片上方，带有淡灰色的背景边框。
+
+3. 核心数据指标卡 (KPI Cards)
+页面内容: 展示所选城市/时间段的综合平均值。
+
+卡片1: 平均 AQI 指数（带有一个环形进度条动画）。
+
+卡片2: PM2.5 浓度均值。
+
+卡片3: PM10 浓度均值。
+
+卡片4: 空气质量达标率（%）。
+
+排版: 使用 Tailwind 的 grid grid-cols-1 md:grid-cols-4 gap-6 进行响应式排版。
+
+4. 可视化图表区 (Charts Section)
+页面内容:
+
+多城市 AQI 趋势图 (折线图): X轴为时间，Y轴为AQI值，不同城市用不同颜色的平滑曲线（Smooth Line）展示。数据点带有呼吸灯效果。
+
+主要污染物占比 (雷达图或饼图): PM2.5, PM10, SO2, NO2 的分布对比。
+
+城市污染天数对比 (柱状图): 统计对比不同城市在选定时间内的优、良、污染天数。
+
+数据明细表 (Table): 提供可分页、可排序的原始数据表格，方便查阅。
+
+三、 交互说明与“炫酷”实现 (Interactions)
+为了在纯白背景下实现“炫酷”，我们需要在动效上下功夫：
+
+首屏加载动画 (Skeleton & Fade-in): 页面初次加载时，图表区显示骨架屏（Skeleton），数据加载完成后，卡片和图表依次向上浮现（使用 Tailwind 的 animate-fade-in-up 自定义动画）。
+
+数字滚动动效 (Number CountUp): KPI卡片中的数字（如 AQI 值）在加载时从 0 快速滚动递增到真实数值，视觉冲击力极强。
+
+图表交互 (Echarts/Chart.js 结合 Vue3):
+
+鼠标悬浮（Hover）在折线图上时，出现十字准星指示器（Crosshair），并弹出精致的 Tooltip 浮层显示详细数据。
+
+点击图例（Legend）可以丝滑地隐藏/显示某个城市的数据线。
+
+丝滑过滤: 切换城市或时间时，页面不刷新，图表内部的数据通过平滑过渡动画（Transition）变形为新的数据形状。
+
+四、 业务逻辑 (Business Logic)
+基于你的技术路线（以 Excel 为主），前端的业务逻辑主要是数据解析与渲染：
+
+数据流转: 你在 Excel 中完成数据清洗和统计分析后，将结果导出为 JSON 格式文件。
+
+数据加载: Vue3 在 onMounted 钩子中通过 fetch 或 axios 读取静态的 JSON 数据文件（模拟真实的 API 请求）。
+
+状态管理: 使用选定的城市和时间作为筛选项（Filter State）。
+
+数据过滤: 当用户在页面上更改城市或时间时，Vue3 的计算属性（computed）会根据这些筛选条件，动态从总 JSON 数据中过滤出当前需要显示的数据子集。
+
+视图更新: 过滤后的数据以 Props 形式传递给封装好的图表组件，触发 ECharts 的 setOption 方法重绘图表。
+
+五、 PRD 设计概要 (基于 Vue3 + TailwindCSS)
+1. 技术栈选型
+框架: Vue 3 (Composition API, <script setup>)
+
+构建工具: Vite (极速冷启动)
+
+样式: Tailwind CSS (实用类优先，快速构建UI)
+
+图表库: ECharts (搭配 vue-echarts 包装器) + 图表主题定制
+
+图标: Heroicons (通过 Tailwind 引入)
+
+2. 组件架构规划 (Components)
+App.vue (根组件)
+
+LayoutHeader.vue (顶部导航栏)
+
+FilterBar.vue (条件筛选器组件，对外 emit 选择变化)
+
+KpiCard.vue (复用的数据卡片组件，接收 title, value, color 作为 props)
+
+ChartLine.vue (封装的趋势折线图组件)
+
+ChartBar.vue (封装的对比柱状图组件)
+
+DataTable.vue (底部数据明细表格组件)

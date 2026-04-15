@@ -1,0 +1,143 @@
+这个“数据明细中心”（数据集展示页）是支撑你整个大创项目数据来源可信度的关键页面。为了打破传统数据表格的枯燥感，并在纯白视觉下实现“炫酷”，我们将采用**“元数据看板 + 高级交互表格（带微图表）”**的设计思路。
+
+按照你的要求，这里是使用 Vue3 + TailwindCSS，并结合本地 Mock 数据的完整 PRD 设计。
+
+一、 视觉排版与色彩规范 (Visual & Typography)
+
+保持与主控制台一致的极简白与微拟态风格，重点突出数据的层级和呼吸感。
+
+
+
+基础色彩: * 背景层：纯白 #FFFFFF (bg-white)。
+
+斑马线条纹（用于表格）：极浅灰 #F8FAFC (bg-slate-50) 与纯白交替。
+
+文字色彩:
+
+表头与标签：中灰 #64748B (text-slate-500)，采用全大写加粗（Uppercase + Tracking-wider）增加现代感。
+
+数据正文：深黑 #0F172A (text-slate-900)，使用等宽字体（Monospace）如 font-mono 让数字对齐更美观。
+
+点缀色 (炫酷感来源):
+
+悬浮光晕：当鼠标 Hover 在表格行时，产生一层淡淡的青蓝色投影 hover:shadow-cyan-500/10。
+
+状态徽标 (Badge)：AQI 级别使用高饱和度背景色+对应文字（如：优为浅绿底深绿字）。
+
+二、 页面布局与核心元素 (Layout & Core Elements)
+
+页面采用上下分层布局：顶部是数据集元信息与操作区，下方是沉浸式的数据表格区。
+
+
+
+1. 顶部操作控制台 (Toolbar & Metadata)
+
+核心元素:
+
+全局搜索框 (Search Bar): 带有玻璃质感的输入框，支持快捷键呼出（如 Ctrl+K）。
+
+高级筛选器 (Filters): 城市下拉多选、日期范围选择器（Date Range Picker）、AQI 等级单选。
+
+数据导出按钮 (Export Actions): 提供“下载 CSV”和“下载 JSON”的按钮，带有渐变边框和 Hover 图标动效。
+
+元数据统计 (Meta Stats): 用三个极简的小指标卡显示：当前检索结果总条数、最新数据日期、覆盖城市数量。
+
+2. 高级数据表格区 (Advanced Data Table)
+
+核心元素:
+
+固定表头 (Sticky Header): 向下滚动时表头吸顶。
+
+排序图标 (Sortable Icons): 字段旁带有上下小箭头，点击可升降序。
+
+状态徽章 (Status Badge): 污染等级直观展示。
+
+行内微图表 (Sparklines - 炫酷点): 在某一行内（例如 PM2.5 历史波动列），直接展示一个极小的 SVG 折线图，不占空间但极具专业感。
+
+分页组件 (Pagination): 位于表格底部，包含页码跳跃和每页条数切换（Page Size）。
+
+三、 交互说明与“炫酷”动效 (Interactions)
+
+骨架屏与交错加载 (Staggered Fade-in): 请求 API 时，表格显示闪烁的灰色骨架屏（Skeleton）。数据返回后，表格行以 50ms 的间隔从上到下依次滑入（使用 Vue 的 <TransitionGroup>）。
+
+聚焦模式 (Row Highlight): 鼠标悬浮（Hover）某一行时，该行背景微微变亮（bg-slate-50），左右两侧出现细微的主题色边框，其他未选中的行透明度轻微降低（降低到 60%），形成强烈的视觉聚焦。
+
+抽屉式详情 (Detail Drawer): 点击某一条数据行，页面右侧平滑滑出一个白色的半透明抽屉（Drawer），以 JSON 树形结构展示该条数据的完整原始信息（炫技点：使用代码高亮库如 Prism.js 渲染 JSON）。
+
+无缝丝滑过滤: 在顶部下拉框切换城市时，表格数据并非白屏刷新，而是列表项平滑地进行位置重排和内容替换。
+
+四、 业务逻辑与 API 目录结构 (Business Logic & Mock)
+
+由于使用 Mock 数据，我们需要在前端模拟完整的后端接口逻辑（包含分页、搜索、排序）。
+
+
+
+1. 目录结构规划
+
+Plaintext
+
+
+
+src/
+
+├── api/
+
+│ ├── index.js # API 请求总出口
+
+│ └── dataset.json # 存放 Mock 原始数据集 (JSON数组)
+
+├── components/
+
+│ ├── DataTable.vue # 表格核心组件
+
+│ └── StatusBadge.vue # 状态标签组件
+
+├── views/
+
+│ └── DataCenter.vue # 数据中心主页面
+
+2. Mock 数据结构 (api/dataset.json)
+
+JSON
+
+
+
+[
+
+{
+
+"id": "A001",
+
+"city": "Beijing",
+
+"date": "2026-03-01",
+
+"aqi": 85,
+
+"level": "良",
+
+"pm25": 62,
+
+"pm10": 80,
+
+"trend": [45, 50, 85, 70, 62]
+
+}
+
+]
+
+3. 核心业务逻辑 (Vue3 setup 编写)
+
+模拟 API 请求 (api/index.js): 编写一个 fetchAirQualityData(params) 函数。内部引入 dataset.json，并通过 setTimeout 模拟 500ms 的网络延迟（为了展示炫酷的加载动画）。
+
+前端分页与过滤:
+
+接收组件传来的参数：page (页码), pageSize (每页条数), keyword (搜索词), sortKey (排序列)。
+
+在 api/index.js 中，使用 JavaScript 原生的 .filter(), .sort(), .slice() 对总 JSON 数组进行处理，返回局部数据给前端。
+
+状态管理 (DataCenter.vue):
+
+定义响应式变量：const tableData = ref([]), const loading = ref(true)。
+
+使用 watchEffect 或 watch 监听筛选条件的变化，只要条件一变，重新触发 fetchAirQualityData 重新获取数据。

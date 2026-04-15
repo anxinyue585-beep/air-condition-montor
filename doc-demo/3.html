@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市空气质量数据大屏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-6 font-sans">
+
+    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-xl p-8 border border-slate-200 transition-all">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">城市空气质量级别天数统计</h2>
+                <p class="text-sm text-slate-500 mt-1">北京、上海、广州年度（Mock数据）空气质量对比</p>
+            </div>
+            
+            <button id="toggleSortBtn" class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                按“污染”天数降序对比
+            </button>
+        </div>
+
+        <div id="chart-container" class="w-full h-[450px]"></div>
+        
+    </div>
+
+    <script>
+        // 初始化 ECharts 实例
+        const chartDom = document.getElementById('chart-container');
+        const myChart = echarts.init(chartDom);
+
+        // 1. 准备 Mock 数据
+        const rawData = [
+            { city: '北京', excellent: 85, good: 160, polluted: 120 },
+            { city: '上海', excellent: 130, good: 180, polluted: 55 },
+            { city: '广州', excellent: 165, good: 155, polluted: 45 }
+        ];
+
+        let isSorted = false;
+
+        // 2. 核心渲染函数
+        function renderChart(data) {
+            // 提取各个维度的数组
+            const cities = data.map(item => item.city);
+            const excellentData = data.map(item => item.excellent);
+            const goodData = data.map(item => item.good);
+            const pollutedData = data.map(item => item.polluted);
+
+            const option = {
+                // 交互体验：增加鼠标悬浮（Hover）时的 tooltip 提示框样式优化，背景阴影效果
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow', // 触发阴影高亮
+                        shadowStyle: {
+                            color: 'rgba(99, 102, 241, 0.05)' // 柔和的阴影背景
+                        }
+                    },
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    padding: [10, 15],
+                    textStyle: { color: '#334155', fontWeight: 500 },
+                    extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-radius: 8px;'
+                },
+                legend: {
+                    data: ['优', '良', '污染'],
+                    bottom: 0,
+                    icon: 'circle',
+                    itemGap: 24,
+                    textStyle: { color: '#64748b', fontSize: 13 }
+                },
+                grid: {
+                    left: '2%',
+                    right: '2%',
+                    bottom: '12%',
+                    top: '8%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: cities,
+                    axisLine: { lineStyle: { color: '#cbd5e1' } },
+                    axisTick: { show: false },
+                    axisLabel: { color: '#475569', fontSize: 14, fontWeight: 'bold', margin: 15 }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '天数',
+                    nameTextStyle: { color: '#94a3b8', padding: [0, 0, 0, -20] },
+                    splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } },
+                    axisLabel: { color: '#94a3b8' }
+                },
+                // 色彩对比：高饱和度、更现代的 Tailwind 风格配色体系
+                color: [
+                    '#10B981', // 优 (Emerald 500)
+                    '#F59E0B', // 良 (Amber 500)
+                    '#EF4444'  // 污染 (Red 500)
+                ],
+                series: [
+                    {
+                        name: '优',
+                        type: 'bar',
+                        // 间距调整
+                        barGap: '15%', // 同一城市内柱子的间距
+                        barCategoryGap: '35%', // 城市组之间的间距
+                        // 柱体样式：顶部圆角
+                        itemStyle: { borderRadius: [6, 6, 0, 0] },
+                        data: excellentData
+                    },
+                    {
+                        name: '良',
+                        type: 'bar',
+                        itemStyle: { borderRadius: [6, 6, 0, 0] },
+                        data: goodData
+                    },
+                    {
+                        name: '污染',
+                        type: 'bar',
+                        itemStyle: { borderRadius: [6, 6, 0, 0] },
+                        data: pollutedData
+                    }
+                ]
+            };
+
+            // 设置动画效果过渡配置，让排序过程更丝滑
+            myChart.setOption(option, {
+                replaceMerge: ['xAxis', 'series']
+            });
+        }
+
+        // 3. 初始渲染
+        renderChart(rawData);
+
+        // 4. 排序逻辑与交互响应
+        const toggleBtn = document.getElementById('toggleSortBtn');
+        toggleBtn.addEventListener('click', function() {
+            if (!isSorted) {
+                // 触发排序：按污染天数从高到低排序，增强“针锋相对”对比感
+                const sortedData = [...rawData].sort((a, b) => b.polluted - a.polluted);
+                renderChart(sortedData);
+                
+                // 更新按钮状态
+                this.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    恢复默认城市排序
+                `;
+                this.classList.replace('bg-indigo-600', 'bg-slate-600');
+                this.classList.replace('hover:bg-indigo-700', 'hover:bg-slate-700');
+            } else {
+                // 恢复默认
+                renderChart(rawData);
+                
+                // 恢复按钮状态
+                this.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                    </svg>
+                    按“污染”天数降序对比
+                `;
+                this.classList.replace('bg-slate-600', 'bg-indigo-600');
+                this.classList.replace('hover:bg-slate-700', 'hover:bg-indigo-700');
+            }
+            isSorted = !isSorted;
+        });
+
+        // 5. 确保图表随窗口缩放自适应
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
+    </script>
+</body>
+</html>

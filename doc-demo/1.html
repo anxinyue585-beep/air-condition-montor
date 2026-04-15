@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市空气质量全景洞察系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FFFFFF',
+                        background: '#F8FAFC',
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        /* 隐藏滚动条但保持可滚动 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .glass-effect { backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <header class="bg-white shadow-sm sticky top-0 z-50 glass-effect bg-opacity-90">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-xl">AQ</div>
+                    <h1 class="text-xl font-bold text-slate-800">城市空气质量全景洞察</h1>
+                </div>
+                <div class="flex items-center gap-6">
+                    <nav class="flex gap-4">
+                        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
+                            :class="['text-sm font-medium transition-colors hover:text-teal-500', currentTab === tab.id ? 'text-teal-600 border-b-2 border-teal-500 pb-1' : 'text-slate-500']">
+                            {{ tab.name }}
+                        </button>
+                    </nav>
+                    <div class="text-sm font-mono text-slate-500 bg-slate-100 px-3 py-1 rounded">{{ currentTime }}</div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+            
+            <div v-show="currentTab === 'dashboard'" class="space-y-6">
+                
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-center animate-fade-in-up">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-slate-500">城市选择:</span>
+                        <select v-model="selectedCity" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2 outline-none">
+                            <option value="all">所有城市对比</option>
+                            <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-slate-500">时间维度:</span>
+                        <select v-model="selectedTime" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2 outline-none">
+                            <option value="week">本周</option>
+                            <option value="month">本月</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div v-for="(kpi, index) in kpiData" :key="index" 
+                         class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
+                         :style="`animation: fadeInUp 0.6s ease-out ${index * 0.1}s forwards; opacity: 0;`">
+                        <div class="absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-10" :class="kpi.colorClass"></div>
+                        <span class="text-sm font-medium text-slate-500">{{ kpi.title }}</span>
+                        <div class="mt-2 flex items-baseline gap-2">
+                            <span class="text-3xl font-bold" :class="kpi.textColor">{{ kpi.value }}</span>
+                            <span class="text-xs text-slate-400 font-medium">{{ kpi.unit }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 lg:col-span-2" style="animation: fadeInUp 0.6s ease-out 0.4s forwards; opacity: 0;">
+                        <h3 class="text-base font-bold text-slate-800 mb-4">AQI 时序趋势</h3>
+                        <div id="chartLine" class="w-full h-[300px]"></div>
+                    </div>
+                    
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100" style="animation: fadeInUp 0.6s ease-out 0.5s forwards; opacity: 0;">
+                        <h3 class="text-base font-bold text-slate-800 mb-4">核心污染物占比</h3>
+                        <div id="chartPie" class="w-full h-[300px]"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 w-full" style="animation: fadeInUp 0.6s ease-out 0.6s forwards; opacity: 0;">
+                    <h3 class="text-base font-bold text-slate-800 mb-4">城市空气质量级别天数统计</h3>
+                    <div id="chartBar" class="w-full h-[300px]"></div>
+                </div>
+            </div>
+
+            <div v-show="currentTab === 'data'" class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 animate-fade-in-up">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-slate-800">原始数据查询</h2>
+                    <button class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        导出 CSV
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-500">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3">日期</th>
+                                <th class="px-6 py-3">城市</th>
+                                <th class="px-6 py-3">AQI</th>
+                                <th class="px-6 py-3">PM2.5</th>
+                                <th class="px-6 py-3">PM10</th>
+                                <th class="px-6 py-3">级别</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, index) in filteredTableData" :key="index" class="bg-white border-b hover:bg-slate-50">
+                                <td class="px-6 py-4">{{ row.date }}</td>
+                                <td class="px-6 py-4 font-medium text-slate-900">{{ row.city }}</td>
+                                <td class="px-6 py-4">{{ row.aqi }}</td>
+                                <td class="px-6 py-4">{{ row.pm25 }}</td>
+                                <td class="px-6 py-4">{{ row.pm10 }}</td>
+                                <td class="px-6 py-4">
+                                    <span :class="getAqiLevelClass(row.aqi)" class="px-2 py-1 rounded text-xs font-medium text-white">
+                                        {{ getAqiLevelText(row.aqi) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div v-show="currentTab === 'about'" class="space-y-6 animate-fade-in-up">
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-100">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">项目背景与研究目标</h2>
+                    <p class="text-slate-600 leading-relaxed mb-6">
+                        本项目旨在通过现代化的前端可视化技术，对城市空气质量数据进行深度解析与多维呈现。系统基于实际监测数据，致力于发现空气污染的潜在规律，为环保决策提供直观的数据支撑。
+                    </p>
+                    <h3 class="text-lg font-bold text-slate-800 mb-3">技术栈与创新点</h3>
+                    <ul class="list-disc list-inside text-slate-600 space-y-2 mb-6">
+                        <li>前端框架：<span class="font-medium text-teal-600">Vue 3 (Composition API)</span>，提供高效的组件化响应式更新。</li>
+                        <li>视觉呈现：基于 <span class="font-medium text-teal-600">Tailwind CSS</span> 的极简留白与微拟态设计。</li>
+                        <li>数据可视化：集成 <span class="font-medium text-teal-600">ECharts 5</span>，实现平滑的数据过渡动画与多维交互分析。</li>
+                    </ul>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick, onUnmounted } = Vue;
+
+        const App = {
+            setup() {
+                // 导航状态
+                const tabs = [
+                    { id: 'dashboard', name: '数据大屏' },
+                    { id: 'data', name: '数据明细' },
+                    { id: 'about', name: '关于项目' }
+                ];
+                const currentTab = ref('dashboard');
+
+                // 时间显示
+                const currentTime = ref('');
+                let timer;
+                const updateTime = () => {
+                    const now = new Date();
+                    currentTime.value = now.toLocaleString('zh-CN', { hour12: false });
+                };
+
+                // 筛选状态
+                const cities = ['北京', '上海', '广州'];
+                const selectedCity = ref('all');
+                const selectedTime = ref('week');
+
+                // 模拟 Mock 数据发生器
+                const generateMockData = () => {
+                    const data = [];
+                    const baseAqi = { '北京': 80, '上海': 55, '广州': 45 };
+                    const dates = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                    
+                    cities.forEach(city => {
+                        dates.forEach(date => {
+                            // 添加随机波动
+                            const randomFluctuation = Math.floor(Math.random() * 40) - 10;
+                            const aqi = Math.max(20, baseAqi[city] + randomFluctuation);
+                            data.push({
+                                city,
+                                date,
+                                aqi: aqi,
+                                pm25: Math.floor(aqi * 0.7),
+                                pm10: Math.floor(aqi * 1.1),
+                                so2: Math.floor(Math.random() * 15 + 5),
+                                no2: Math.floor(Math.random() * 25 + 10)
+                            });
+                        });
+                    });
+                    return data;
+                };
+
+                const rawData = ref(generateMockData());
+
+                // 过滤后的数据
+                const filteredData = computed(() => {
+                    if (selectedCity.value === 'all') return rawData.value;
+                    return rawData.value.filter(d => d.city === selectedCity.value);
+                });
+
+                const filteredTableData = computed(() => rawData.value);
+
+                // KPI 计算
+                const kpiData = computed(() => {
+                    const data = filteredData.value;
+                    if (!data.length) return [];
+                    
+                    const avgAqi = Math.round(data.reduce((sum, d) => sum + d.aqi, 0) / data.length);
+                    const avgPm25 = Math.round(data.reduce((sum, d) => sum + d.pm25, 0) / data.length);
+                    const avgPm10 = Math.round(data.reduce((sum, d) => sum + d.pm10, 0) / data.length);
+                    const goodDays = data.filter(d => d.aqi <= 100).length;
+                    const complianceRate = Math.round((goodDays / data.length) * 100);
+
+                    // 动态颜色判断
+                    const getAqiColor = (val) => {
+                        if (val <= 50) return { text: 'text-emerald-500', bg: 'bg-emerald-500' };
+                        if (val <= 100) return { text: 'text-amber-500', bg: 'bg-amber-500' };
+                        return { text: 'text-rose-500', bg: 'bg-rose-500' };
+                    };
+
+                    const aqiColors = getAqiColor(avgAqi);
+
+                    return [
+                        { title: '平均 AQI', value: avgAqi, unit: '指数', textColor: aqiColors.text, colorClass: aqiColors.bg },
+                        { title: 'PM2.5 均值', value: avgPm25, unit: 'μg/m³', textColor: 'text-slate-800', colorClass: 'bg-blue-500' },
+                        { title: 'PM10 均值', value: avgPm10, unit: 'μg/m³', textColor: 'text-slate-800', colorClass: 'bg-indigo-500' },
+                        { title: '优良天数占比', value: complianceRate, unit: '%', textColor: 'text-teal-600', colorClass: 'bg-teal-500' }
+                    ];
+                });
+
+                // 辅助函数：根据 AQI 获取标签样式
+                const getAqiLevelText = (aqi) => {
+                    if (aqi <= 50) return '优';
+                    if (aqi <= 100) return '良';
+                    if (aqi <= 150) return '轻度污染';
+                    return '中度以上污染';
+                };
+                const getAqiLevelClass = (aqi) => {
+                    if (aqi <= 50) return 'bg-emerald-500';
+                    if (aqi <= 100) return 'bg-amber-500';
+                    if (aqi <= 150) return 'bg-orange-500';
+                    return 'bg-rose-500';
+                };
+
+                // 图表实例存储
+                let chartLineInst = null;
+                let chartPieInst = null;
+                let chartBarInst = null;
+
+                // 渲染图表方法
+                const renderCharts = () => {
+                    const isAll = selectedCity.value === 'all';
+                    const dates = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                    
+                    // 1. 折线图
+                    if (!chartLineInst) chartLineInst = echarts.init(document.getElementById('chartLine'));
+                    const lineSeries = isAll ? cities.map(city => ({
+                        name: city,
+                        type: 'line',
+                        smooth: true,
+                        data: rawData.value.filter(d => d.city === city).map(d => d.aqi)
+                    })) : [{
+                        name: selectedCity.value,
+                        type: 'line',
+                        smooth: true,
+                        areaStyle: { opacity: 0.1 },
+                        data: filteredData.value.map(d => d.aqi)
+                    }];
+
+                    chartLineInst.setOption({
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                        legend: { data: isAll ? cities : [selectedCity.value], top: 0 },
+                        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                        xAxis: { type: 'category', boundaryGap: false, data: dates },
+                        yAxis: { type: 'value' },
+                        series: lineSeries,
+                        color: ['#34d399', '#fbbf24', '#f43f5e']
+                    });
+
+                    // 2. 饼图/雷达图 (取平均污染物占比)
+                    if (!chartPieInst) chartPieInst = echarts.init(document.getElementById('chartPie'));
+                    const avgData = {
+                        pm25: filteredData.value.reduce((s, d) => s + d.pm25, 0) / filteredData.value.length,
+                        pm10: filteredData.value.reduce((s, d) => s + d.pm10, 0) / filteredData.value.length,
+                        so2: filteredData.value.reduce((s, d) => s + d.so2, 0) / filteredData.value.length,
+                        no2: filteredData.value.reduce((s, d) => s + d.no2, 0) / filteredData.value.length,
+                    };
+
+                    chartPieInst.setOption({
+                        tooltip: { trigger: 'item' },
+                        legend: { bottom: '0', left: 'center' },
+                        series: [{
+                            name: '污染物占比',
+                            type: 'pie',
+                            radius: ['40%', '70%'],
+                            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                            data: [
+                                { value: avgData.pm25.toFixed(1), name: 'PM2.5' },
+                                { value: avgData.pm10.toFixed(1), name: 'PM10' },
+                                { value: avgData.so2.toFixed(1), name: 'SO2' },
+                                { value: avgData.no2.toFixed(1), name: 'NO2' }
+                            ]
+                        }],
+                        color: ['#60a5fa', '#818cf8', '#a78bfa', '#f472b6']
+                    });
+
+                    // 3. 柱状图 (达标天数统计)
+                    if (!chartBarInst) chartBarInst = echarts.init(document.getElementById('chartBar'));
+                    
+                    const barData = cities.map(city => {
+                        const cityData = rawData.value.filter(d => d.city === city);
+                        return {
+                            excellent: cityData.filter(d => d.aqi <= 50).length,
+                            good: cityData.filter(d => d.aqi > 50 && d.aqi <= 100).length,
+                            polluted: cityData.filter(d => d.aqi > 100).length
+                        };
+                    });
+
+                    chartBarInst.setOption({
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                        legend: { data: ['优', '良', '污染'], top: 0 },
+                        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                        xAxis: { type: 'category', data: cities },
+                        yAxis: { type: 'value' },
+                        series: [
+                            { name: '优', type: 'bar', stack: 'total', data: barData.map(d => d.excellent), itemStyle: { color: '#34d399' } },
+                            { name: '良', type: 'bar', stack: 'total', data: barData.map(d => d.good), itemStyle: { color: '#fbbf24' } },
+                            { name: '污染', type: 'bar', stack: 'total', data: barData.map(d => d.polluted), itemStyle: { color: '#f43f5e' } }
+                        ]
+                    });
+                };
+
+                // 监听窗口大小变化调整图表
+                const resizeCharts = () => {
+                    if (chartLineInst) chartLineInst.resize();
+                    if (chartPieInst) chartPieInst.resize();
+                    if (chartBarInst) chartBarInst.resize();
+                };
+
+                // 监听数据过滤和 Tab 切换
+                watch([selectedCity, selectedTime], () => {
+                    // 模拟重新拉取/计算数据
+                    rawData.value = generateMockData();
+                    nextTick(() => {
+                        if (currentTab.value === 'dashboard') renderCharts();
+                    });
+                });
+
+                watch(currentTab, (newVal) => {
+                    if (newVal === 'dashboard') {
+                        nextTick(() => {
+                            renderCharts();
+                            resizeCharts();
+                        });
+                    }
+                });
+
+                onMounted(() => {
+                    updateTime();
+                    timer = setInterval(updateTime, 1000);
+                    nextTick(() => renderCharts());
+                    window.addEventListener('resize', resizeCharts);
+                });
+
+                onUnmounted(() => {
+                    clearInterval(timer);
+                    window.removeEventListener('resize', resizeCharts);
+                });
+
+                return {
+                    tabs, currentTab, currentTime,
+                    cities, selectedCity, selectedTime,
+                    kpiData, filteredTableData,
+                    getAqiLevelText, getAqiLevelClass
+                };
+            }
+        };
+
+        createApp(App).mount('#app');
+    </script>
+</body>
+</html>

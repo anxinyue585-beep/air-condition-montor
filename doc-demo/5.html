@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市空气质量平行坐标系对抗视图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        /* 确保表格 Hover 时的高斯模糊/投影层级正确 */
+        .hover-row {
+            transition: all 0.3s ease;
+        }
+        .hover-row:hover {
+            z-index: 20;
+            position: relative;
+            transform: translateY(-1px); /* 微拟态：悬浮时的轻微上浮感 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 p-8 min-h-screen flex justify-center items-center font-sans">
+
+    <div class="w-full max-w-5xl bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible">
+        
+        <div class="px-8 pt-8 pb-2">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 tracking-wide">城市污染物平行坐标交叉分析</h2>
+                    <p class="text-sm text-slate-500 mt-1">线条交叉越密集，代表城市间的污染特征差异越“针锋相对”</p>
+                </div>
+                <div class="flex space-x-4 text-xs font-bold font-mono">
+                    <div class="flex items-center text-slate-900"><span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>BEIJING</div>
+                    <div class="flex items-center text-slate-900"><span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span>SHANGHAI</div>
+                    <div class="flex items-center text-slate-900"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>GUANGZHOU</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="parallel-chart" class="w-full h-[360px] px-4 mt-4"></div>
+
+        <div class="w-full px-8 pb-8 mt-2 relative">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="py-4 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">Target City</th>
+                        <th class="py-4 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">AQI Status</th>
+                        <th class="py-4 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">PM2.5 (μg/m³)</th>
+                        <th class="py-4 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">PM10 (μg/m³)</th>
+                        <th class="py-4 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">O3 (μg/m³)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white hover:shadow-xl hover:shadow-cyan-500/10 rounded-lg cursor-default">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">Beijing</td>
+                        <td class="py-4 px-4">
+                            <span class="inline-block px-2.5 py-1 rounded text-xs font-bold bg-rose-100 text-rose-600 border border-rose-200">重度污染</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">142.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">185.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">85.0</td>
+                    </tr>
+                    
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white hover:shadow-xl hover:shadow-cyan-500/10 rounded-lg cursor-default">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">Shanghai</td>
+                        <td class="py-4 px-4">
+                            <span class="inline-block px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-600 border border-amber-200">轻度污染</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">68.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">92.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">165.0</td>
+                    </tr>
+
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white hover:shadow-xl hover:shadow-cyan-500/10 rounded-lg cursor-default">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">Guangzhou</td>
+                        <td class="py-4 px-4">
+                            <span class="inline-block px-2.5 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-600 border border-emerald-200">优良</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">25.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">45.0</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">105.0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        const chartDom = document.getElementById('parallel-chart');
+        const myChart = echarts.init(chartDom);
+
+        // 数据：模拟在不同指标上的大幅度波动，制造线条交叉碰撞
+        const dataBJ = [[142, 185, 45, 30, 2.1, 85]];   // 北京：颗粒物高，O3低
+        const dataSH = [[68, 92, 32, 15, 1.2, 165]];    // 上海：颗粒物中等，O3极高 (产生线条交叉)
+        const dataGZ = [[25, 45, 28, 12, 0.8, 105]];    // 广州：整体偏低
+
+        const option = {
+            color: ['#f43f5e', '#fbbf24', '#10b981'],
+            tooltip: {
+                padding: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                textStyle: { color: '#0f172a', fontFamily: 'monospace' },
+                boxShadow: '0 10px 15px -3px rgba(6, 182, 212, 0.1)', // 呼应你的 cyan hover 投影
+            },
+            parallelAxis: [
+                { dim: 0, name: 'PM2.5', max: 200 },
+                { dim: 1, name: 'PM10', max: 200 },
+                { dim: 2, name: 'NO2', max: 100 },
+                { dim: 3, name: 'SO2', max: 100 },
+                { dim: 4, name: 'CO', max: 5 },
+                { dim: 5, name: 'O3', max: 200 }
+            ],
+            parallel: {
+                left: '8%',
+                right: '8%',
+                bottom: 30,
+                top: 40,
+                // 平行坐标系的纵轴与背景线样式设计
+                parallelAxisDefault: {
+                    type: 'value',
+                    nameLocation: 'end',
+                    nameGap: 15,
+                    nameTextStyle: {
+                        color: '#64748b', // 表头同款中灰
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        fontWeight: 'bold'
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: '#cbd5e1' // 坐标轴浅灰
+                        }
+                    },
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLabel: { color: '#94a3b8', fontFamily: 'monospace' }
+                }
+            },
+            series: [
+                {
+                    name: 'Beijing',
+                    type: 'parallel',
+                    lineStyle: { width: 3, opacity: 0.6, type: 'solid' },
+                    emphasis: { lineStyle: { width: 6, opacity: 1 } }, // 交互：Hover时线条变粗且不透明
+                    data: dataBJ
+                },
+                {
+                    name: 'Shanghai',
+                    type: 'parallel',
+                    lineStyle: { width: 3, opacity: 0.6, type: 'solid' },
+                    emphasis: { lineStyle: { width: 6, opacity: 1 } },
+                    data: dataSH
+                },
+                {
+                    name: 'Guangzhou',
+                    type: 'parallel',
+                    lineStyle: { width: 3, opacity: 0.6, type: 'solid' },
+                    emphasis: { lineStyle: { width: 6, opacity: 1 } },
+                    data: dataGZ
+                }
+            ]
+        };
+
+        myChart.setOption(option);
+
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
+    </script>
+</body>
+</html>

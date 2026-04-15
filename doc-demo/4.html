@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市空气质量多维洞察</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        /* 确保表格 Hover 时的阴影能覆盖相邻行 */
+        .hover-row:hover {
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 p-8 min-h-screen flex justify-center items-center">
+
+    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        <div class="px-8 pt-8 pb-4">
+            <h2 class="text-xl font-bold text-slate-900 tracking-wide">多维污染物因子对抗分析</h2>
+            <p class="text-sm text-slate-500 mt-1">六项主要污染物指标分布视图 · 雷达交叠对比</p>
+        </div>
+
+        <div id="radar-chart" class="w-full h-[380px] px-8"></div>
+
+        <div class="w-full px-8 pb-8 mt-4">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">City</th>
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">AQI Level</th>
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">PM2.5</th>
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">PM10</th>
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">NO2</th>
+                        <th class="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider text-xs">O3</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">北京</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold bg-rose-100 text-rose-700">重度污染</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">115</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">158</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">45</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">102</td>
+                    </tr>
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">上海</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700">轻度污染</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">75</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">95</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">32</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">135</td>
+                    </tr>
+                    <tr class="hover-row group even:bg-slate-50 odd:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                        <td class="py-4 px-4 text-slate-900 font-bold text-sm">广州</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700">良</span>
+                        </td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">35</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">52</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">28</td>
+                        <td class="py-4 px-4 text-slate-900 font-mono text-sm">110</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        const chartDom = document.getElementById('radar-chart');
+        const myChart = echarts.init(chartDom);
+
+        const option = {
+            // 设置雷达图的颜色，使用微拟态体系下的通透色彩
+            color: ['#f43f5e', '#fbbf24', '#10b981'],
+            tooltip: {
+                trigger: 'item',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                borderColor: '#e2e8f0',
+                textStyle: { color: '#0f172a', fontFamily: 'monospace' },
+                padding: [10, 15],
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            },
+            legend: {
+                bottom: 0,
+                icon: 'circle',
+                itemGap: 20,
+                textStyle: { color: '#64748b', fontWeight: 'bold' },
+                data: ['北京 (重度)', '上海 (轻度)', '广州 (良)']
+            },
+            radar: {
+                // 雷达图多边形的坐标系配置
+                indicator: [
+                    { name: 'PM2.5', max: 200 },
+                    { name: 'PM10', max: 200 },
+                    { name: 'NO2', max: 100 },
+                    { name: 'SO2', max: 100 },
+                    { name: 'CO', max: 5 },
+                    { name: 'O3', max: 200 }
+                ],
+                shape: 'polygon',
+                radius: '65%',
+                axisName: {
+                    color: '#64748b',
+                    fontWeight: 'bold',
+                    fontFamily: 'monospace'
+                },
+                splitArea: {
+                    areaStyle: {
+                        color: ['#f8fafc', '#ffffff'] // 极简白背景交替
+                    }
+                },
+                axisLine: { lineStyle: { color: '#e2e8f0' } },
+                splitLine: { lineStyle: { color: '#e2e8f0' } }
+            },
+            series: [
+                {
+                    name: '城市污染物对比',
+                    type: 'radar',
+                    symbol: 'none', // 去除拐点圆点，线条更凌厉
+                    lineStyle: { width: 2 },
+                    areaStyle: {
+                        opacity: 0.15 // 增加透明度，体现交叠穿透的微拟态感
+                    },
+                    data: [
+                        {
+                            value: [115, 158, 45, 30, 2.1, 102],
+                            name: '北京 (重度)'
+                        },
+                        {
+                            value: [75, 95, 32, 15, 1.2, 135],
+                            name: '上海 (轻度)'
+                        },
+                        {
+                            value: [35, 52, 28, 12, 0.8, 110],
+                            name: '广州 (良)'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        myChart.setOption(option);
+
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
+    </script>
+</body>
+</html>

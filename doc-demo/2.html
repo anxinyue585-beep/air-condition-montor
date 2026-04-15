@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据明细中心 - 城市空气质量全景洞察</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'] },
+                    colors: { primary: '#FFFFFF', background: '#F8FAFC' },
+                    animation: { 'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .glass-input { backdrop-filter: blur(8px); background-color: rgba(255,255,255,0.8); }
+        
+        /* 列表平滑过渡动画 */
+        .list-move, .list-enter-active, .list-leave-active { transition: all 0.5s ease; }
+        .list-enter-from, .list-leave-to { opacity: 0; transform: translateY(15px); }
+        .list-leave-active { position: absolute; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased overflow-x-hidden">
+    <div id="app" class="min-h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full relative">
+        
+        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">数据明细中心</h1>
+                <p class="text-sm text-slate-500 mt-1">全局空气质量数据集检索与导出</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col items-end">
+                    <span class="text-xs text-slate-500 uppercase tracking-wider font-bold">总数据条数</span>
+                    <span class="text-lg font-mono font-bold text-slate-900">{{ totalItems }}</span>
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex flex-col items-end">
+                    <span class="text-xs text-slate-500 uppercase tracking-wider font-bold">覆盖城市</span>
+                    <span class="text-lg font-mono font-bold text-slate-900">{{ cities.length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-t-xl border border-slate-200 border-b-0 flex flex-wrap items-center justify-between gap-4 z-10 sticky top-0">
+            <div class="flex items-center gap-3 flex-1 min-w-[300px]">
+                <div class="relative w-64">
+                    <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" v-model="searchQuery" placeholder="搜索城市或日期 (Ctrl+K)" class="glass-input w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-shadow">
+                </div>
+                <select v-model="selectedCity" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-cyan-500 outline-none py-2 px-3">
+                    <option value="">所有城市</option>
+                    <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+                </select>
+                <select v-model="selectedLevel" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-cyan-500 outline-none py-2 px-3">
+                    <option value="">所有等级</option>
+                    <option value="优">优</option>
+                    <option value="良">良</option>
+                    <option value="污染">污染</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button class="px-4 py-2 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-cyan-600 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> CSV
+                </button>
+                <button class="px-4 py-2 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-md">
+                    导出全部
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-b-xl shadow-sm overflow-hidden relative min-h-[400px]">
+            
+            <div v-if="loading" class="absolute inset-0 bg-white z-10 p-4">
+                <div v-for="i in 8" :key="i" class="flex animate-pulse-fast mb-4">
+                    <div class="h-8 bg-slate-100 rounded w-1/6 mr-4"></div>
+                    <div class="h-8 bg-slate-100 rounded w-1/4 mr-4"></div>
+                    <div class="h-8 bg-slate-100 rounded w-1/6 mr-4"></div>
+                    <div class="h-8 bg-slate-100 rounded w-full"></div>
+                </div>
+            </div>
+
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th v-for="col in columns" :key="col.key" @click="sortBy(col.key)" 
+                            class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 transition-colors group">
+                            <div class="flex items-center gap-1">
+                                {{ col.label }}
+                                <svg v-if="sortKey === col.key" :class="{'rotate-180': sortOrder === -1}" class="w-3 h-3 text-cyan-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                <svg v-else class="w-3 h-3 opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">PM2.5 近期波动 (Sparkline)</th>
+                    </tr>
+                </thead>
+                <tbody class="relative">
+                    <TransitionGroup name="list">
+                        <tr v-for="(row, index) in paginatedData" :key="row.id" 
+                            @click="openDrawer(row)"
+                            class="border-b border-slate-100 cursor-pointer transition-all duration-300 hover:bg-slate-50 hover:shadow-[inset_4px_0_0_0_#06b6d4] hover:shadow-cyan-500/10 group">
+                            
+                            <td class="px-6 py-4 font-mono text-sm text-slate-600">{{ row.id }}</td>
+                            <td class="px-6 py-4 text-sm font-bold text-slate-900">{{ row.city }}</td>
+                            <td class="px-6 py-4 font-mono text-sm text-slate-600">{{ row.date }}</td>
+                            <td class="px-6 py-4 font-mono text-sm text-slate-900 font-bold">{{ row.aqi }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                <span :class="getBadgeClass(row.level)" class="px-2.5 py-1 rounded-full text-xs font-bold border">
+                                    {{ row.level }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-sm text-slate-600">
+                                <span class="text-slate-400 mr-1">μg</span>{{ row.pm25 }}
+                            </td>
+                            <td class="px-6 py-2 align-middle">
+                                <svg width="100" height="24" class="overflow-visible group-hover:stroke-cyan-500 transition-colors">
+                                    <polyline fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        :points="generateSparkline(row.trend, 100, 24)" />
+                                </svg>
+                            </td>
+                        </tr>
+                    </TransitionGroup>
+                </tbody>
+            </table>
+
+            <div v-if="!loading && paginatedData.length === 0" class="p-12 text-center text-slate-500">
+                暂无匹配的数据记录。
+            </div>
+
+            <div class="border-t border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+                <span class="text-sm text-slate-500">
+                    显示第 <span class="font-mono font-bold text-slate-900">{{ (currentPage - 1) * pageSize + 1 }}</span> 
+                    到 <span class="font-mono font-bold text-slate-900">{{ Math.min(currentPage * pageSize, totalFiltered) }}</span> 条
+                </span>
+                <div class="flex gap-1">
+                    <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 hover:bg-slate-50">上一页</button>
+                    <button v-for="page in totalPages" :key="page" @click="currentPage = page" 
+                            :class="['px-3 py-1 border rounded text-sm font-mono', currentPage === page ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50']">
+                        {{ page }}
+                    </button>
+                    <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 border border-slate-200 rounded text-sm disabled:opacity-50 hover:bg-slate-50">下一页</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+            <div class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" @click="isDrawerOpen = false"></div>
+            <div class="fixed inset-y-0 right-0 max-w-md w-full flex">
+                <div class="w-full bg-white shadow-2xl border-l border-slate-200 transform transition-transform ease-in-out duration-300 flex flex-col">
+                    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <h2 class="text-lg font-bold text-slate-900">原始数据节点 (JSON)</h2>
+                        <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-slate-600">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div class="p-6 flex-1 overflow-y-auto bg-[#0F172A]">
+                        <pre class="text-sm font-mono text-cyan-400 leading-relaxed"><code>{{ formatJSON(selectedRow) }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch, onMounted } = Vue;
+
+        const App = {
+            setup() {
+                // 状态管理
+                const tableData = ref([]);
+                const loading = ref(true);
+                const searchQuery = ref('');
+                const selectedCity = ref('');
+                const selectedLevel = ref('');
+                
+                const currentPage = ref(1);
+                const pageSize = ref(10);
+                const sortKey = ref('date');
+                const sortOrder = ref(-1); // 1 升序, -1 降序
+                
+                const isDrawerOpen = ref(false);
+                const selectedRow = ref(null);
+
+                const columns = [
+                    { key: 'id', label: '节点 ID' },
+                    { key: 'city', label: '监测城市' },
+                    { key: 'date', label: '采集时间' },
+                    { key: 'aqi', label: 'AQI 指数' },
+                    { key: 'level', label: '污染级别' },
+                    { key: 'pm25', label: 'PM2.5 浓度' }
+                ];
+
+                const cities = ['北京', '上海', '广州', '深圳', '成都', '杭州'];
+
+                // 1. 生成 Mock 数据
+                const generateMockData = () => {
+                    const data = [];
+                    const levels = ['优', '良', '污染'];
+                    for (let i = 1; i <= 55; i++) {
+                        const aqiVal = Math.floor(Math.random() * 180) + 20;
+                        const lvl = aqiVal <= 50 ? '优' : (aqiVal <= 100 ? '良' : '污染');
+                        // 随机生成趋势数组
+                        const trend = Array.from({length: 10}, () => Math.floor(Math.random() * 80) + 10);
+                        
+                        data.push({
+                            id: `AQ-${1000 + i}`,
+                            city: cities[Math.floor(Math.random() * cities.length)],
+                            date: `2026-03-${String(Math.floor(Math.random() * 30) + 1).padStart(2, '0')}`,
+                            aqi: aqiVal,
+                            level: lvl,
+                            pm25: Math.floor(aqiVal * 0.7),
+                            pm10: Math.floor(aqiVal * 1.2),
+                            so2: Math.floor(Math.random() * 20),
+                            no2: Math.floor(Math.random() * 40),
+                            trend: trend
+                        });
+                    }
+                    return data;
+                };
+
+                // 2. 模拟 API 请求逻辑
+                const fetchAirQualityData = () => {
+                    loading.value = true;
+                    // 模拟网络延迟 600ms 以展示骨架屏
+                    setTimeout(() => {
+                        let raw = generateMockData();
+                        tableData.value = raw;
+                        loading.value = false;
+                    }, 600);
+                };
+
+                // 3. 数据过滤与排序 (前端逻辑)
+                const filteredAndSortedData = computed(() => {
+                    let result = tableData.value;
+
+                    // 搜索框过滤 (模糊匹配 ID, 城市, 日期)
+                    if (searchQuery.value) {
+                        const q = searchQuery.value.toLowerCase();
+                        result = result.filter(item => 
+                            item.id.toLowerCase().includes(q) || 
+                            item.city.includes(q) || 
+                            item.date.includes(q)
+                        );
+                    }
+                    
+                    // 下拉框过滤
+                    if (selectedCity.value) result = result.filter(i => i.city === selectedCity.value);
+                    if (selectedLevel.value) result = result.filter(i => i.level === selectedLevel.value);
+
+                    // 排序逻辑
+                    result.sort((a, b) => {
+                        let valA = a[sortKey.value];
+                        let valB = b[sortKey.value];
+                        if (typeof valA === 'string') {
+                            return valA.localeCompare(valB) * sortOrder.value;
+                        }
+                        return (valA - valB) * sortOrder.value;
+                    });
+
+                    return result;
+                });
+
+                // 分页处理
+                const paginatedData = computed(() => {
+                    const start = (currentPage.value - 1) * pageSize.value;
+                    const end = start + pageSize.value;
+                    return filteredAndSortedData.value.slice(start, end);
+                });
+
+                const totalItems = computed(() => tableData.value.length);
+                const totalFiltered = computed(() => filteredAndSortedData.value.length);
+                const totalPages = computed(() => Math.ceil(totalFiltered.value / pageSize.value) || 1);
+
+                // 交互操作
+                const sortBy = (key) => {
+                    if (sortKey.value === key) {
+                        sortOrder.value *= -1; // 切换升降序
+                    } else {
+                        sortKey.value = key;
+                        sortOrder.value = 1;
+                    }
+                };
+
+                const openDrawer = (row) => {
+                    selectedRow.value = row;
+                    isDrawerOpen.value = true;
+                };
+
+                // 样式辅助函数
+                const getBadgeClass = (level) => {
+                    const map = {
+                        '优': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        '良': 'bg-amber-50 text-amber-700 border-amber-200',
+                        '污染': 'bg-rose-50 text-rose-700 border-rose-200'
+                    };
+                    return map[level] || 'bg-slate-100 text-slate-700';
+                };
+
+                // 炫技点：生成 SVG Sparkline 的坐标点
+                const generateSparkline = (data, width, height) => {
+                    if (!data || !data.length) return '';
+                    const min = Math.min(...data);
+                    const max = Math.max(...data);
+                    const range = max - min || 1;
+                    const stepX = width / (data.length - 1);
+                    
+                    return data.map((val, index) => {
+                        const x = index * stepX;
+                        // Y 轴反转，因为 SVG 原点在左上角
+                        const y = height - ((val - min) / range) * (height - 4) - 2; 
+                        return `${x},${y}`;
+                    }).join(' ');
+                };
+
+                const formatJSON = (obj) => {
+                    return JSON.stringify(obj, null, 2);
+                };
+
+                // 监听条件变化，重置页码并重新“请求” (模拟过滤加载)
+                watch([searchQuery, selectedCity, selectedLevel], () => {
+                    currentPage.value = 1;
+                    // 在真实项目中这里会重新调用 fetchAirQualityData
+                    // 这里为了前端体验流畅，仅重置页码，由 computed 自动过滤
+                });
+
+                // 快捷键支持 Ctrl+K 聚焦搜索框
+                onMounted(() => {
+                    fetchAirQualityData();
+                    window.addEventListener('keydown', (e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                            e.preventDefault();
+                            document.querySelector('input[type="text"]').focus();
+                        }
+                    });
+                });
+
+                return {
+                    tableData, loading, searchQuery, selectedCity, selectedLevel, cities,
+                    columns, sortKey, sortOrder, sortBy,
+                    paginatedData, currentPage, pageSize, totalPages, totalItems, totalFiltered,
+                    isDrawerOpen, selectedRow, openDrawer,
+                    getBadgeClass, generateSparkline, formatJSON
+                };
+            }
+        };
+
+        createApp(App).mount('#app');
+    </script>
+</body>
+</html>
