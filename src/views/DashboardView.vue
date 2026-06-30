@@ -36,47 +36,50 @@ const {
       />
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6">
       <div
-        class="animate-fade-in-up rounded-xl border border-slate-100 bg-white p-5 shadow-sm lg:col-span-2"
+        class="animate-fade-in-up overflow-hidden rounded-xl border border-slate-100 bg-white p-6 shadow-sm"
         style="animation-delay: 0.35s"
       >
         <ChartLine
           :raw-data="rawData"
           :filtered-data="filteredData"
           :selected-city="selectedCity"
+          :time-dimension="selectedTime"
           :cities="CITIES"
           :date-labels="dateLabels"
         />
       </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
       <div
-        class="animate-fade-in-up rounded-xl border border-slate-100 bg-white p-5 shadow-sm"
+        class="animate-fade-in-up overflow-hidden rounded-xl border border-slate-100 bg-white p-6 shadow-sm xl:col-span-3"
         style="animation-delay: 0.45s"
+      >
+        <ChartBar :raw-data="rawData" :cities="CITIES" :time-dimension="selectedTime" />
+      </div>
+      <div
+        class="animate-fade-in-up overflow-hidden rounded-xl border border-slate-100 bg-white p-6 shadow-sm xl:col-span-2"
+        style="animation-delay: 0.55s"
       >
         <ChartPie :filtered-data="filteredData" />
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <div
-        class="animate-fade-in-up rounded-xl border border-slate-100 bg-white p-5 shadow-sm"
-        style="animation-delay: 0.55s"
-      >
-        <ChartBar :raw-data="rawData" :cities="CITIES" />
-      </div>
-      <div
-        class="animate-fade-in-up rounded-xl border border-slate-100 bg-white p-5 shadow-sm"
+        class="animate-fade-in-up overflow-hidden rounded-xl border border-slate-100 bg-white p-6 shadow-sm"
         style="animation-delay: 0.65s"
       >
-        <ChartRadar :raw-data="rawData" :cities="CITIES" />
+        <ChartRadar :raw-data="rawData" :cities="CITIES" :selected-city="selectedCity" />
       </div>
-    </div>
-
-    <div
-      class="animate-fade-in-up w-full rounded-xl border border-slate-100 bg-white p-5 shadow-sm"
-      style="animation-delay: 0.75s"
-    >
-      <ChartParallel :raw-data="rawData" :cities="CITIES" />
+      <div
+        class="animate-fade-in-up overflow-hidden rounded-xl border border-slate-100 bg-white p-6 shadow-sm"
+        style="animation-delay: 0.75s"
+      >
+        <ChartParallel :raw-data="rawData" :cities="CITIES" :selected-city="selectedCity" />
+      </div>
     </div>
   </div>
 </template>

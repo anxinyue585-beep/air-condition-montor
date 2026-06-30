@@ -1,0 +1,4 @@
+﻿cluster_id,cluster_name,city_count,avg_aqi,max_aqi,avg_polluted_rate,representative_cities
+1,中等波动型,21,70.93,128.0,0.035,呼和浩特、哈尔滨、济南、宝鸡、沈阳
+0,低污染稳定型,30,44.98,93.0,0.0,杭州、无锡、烟台、苏州、绵阳
+2,高污染风险型,9,98.08,162.0,0.4501,石家庄、太原、乌鲁木齐、西安、郑州

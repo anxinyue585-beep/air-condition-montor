@@ -6,88 +6,116 @@ import type { AirRecord } from '../types/air'
 const props = defineProps<{
   rawData: AirRecord[]
   cities: readonly string[]
+  selectedCity: string
 }>()
 
 const elRef = ref<HTMLElement | null>(null)
 let chart: echarts.ECharts | null = null
 
-// CO / O3 没有数据字段，使用与城市绑定的合理固定 mock 值
-const CITY_EXTRAS: Record<string, { co: number; o3: number }> = {
-  北京: { co: 2.1, o3: 102 },
-  上海: { co: 1.2, o3: 135 },
-  广州: { co: 0.8, o3: 110 },
+type MetricKey = keyof Pick<AirRecord, 'aqi' | 'pm25' | 'pm10' | 'so2' | 'no2'>
+
+const metrics: Array<{ key: MetricKey; name: string; fallbackMax: number }> = [
+  { key: 'aqi', name: 'AQI', fallbackMax: 160 },
+  { key: 'pm25', name: 'PM2.5', fallbackMax: 90 },
+  { key: 'pm10', name: 'PM10', fallbackMax: 140 },
+  { key: 'no2', name: 'NO2', fallbackMax: 70 },
+  { key: 'so2', name: 'SO2', fallbackMax: 40 },
+]
+
+function average(values: number[]) {
+  if (!values.length) return 0
+  return Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1))
 }
 
-function avg(arr: number[]) {
-  if (!arr.length) return 0
-  return Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
+function rowsForCity(city: string) {
+  return props.rawData.filter((item) => item.city === city)
+}
+
+function cityStats() {
+  return props.cities
+    .map((city) => {
+      const rows = rowsForCity(city)
+      return {
+        city,
+        rows,
+        avgAqi: average(rows.map((item) => item.aqi)),
+      }
+    })
+    .filter((item) => item.rows.length > 0)
+}
+
+function focusedCities() {
+  if (props.selectedCity !== 'all') return [props.selectedCity]
+  return cityStats()
+    .sort((a, b) => b.avgAqi - a.avgAqi)
+    .slice(0, 3)
+    .map((item) => item.city)
+}
+
+function maxForMetric(key: MetricKey, fallback: number) {
+  const maxValue = Math.max(...props.rawData.map((item) => item[key]), fallback)
+  return Math.ceil((maxValue * 1.15) / 10) * 10
 }
 
 function buildOption() {
-  const seriesData = props.cities.map((city) => {
-    const cityData = props.rawData.filter((d) => d.city === city)
-    const extras = CITY_EXTRAS[city] ?? { co: 1.0, o3: 100 }
+  const cities = focusedCities()
+  const data = cities.map((city) => {
+    const rows = rowsForCity(city)
     return {
-      value: [
-        avg(cityData.map((d) => d.pm25)),
-        avg(cityData.map((d) => d.pm10)),
-        avg(cityData.map((d) => d.no2)),
-        avg(cityData.map((d) => d.so2)),
-        extras.co,
-        extras.o3,
-      ],
       name: city,
+      value: metrics.map((metric) => average(rows.map((item) => item[metric.key]))),
     }
   })
 
+  if (props.selectedCity !== 'all' && props.rawData.length) {
+    data.unshift({
+      name: '整体平均',
+      value: metrics.map((metric) => average(props.rawData.map((item) => item[metric.key]))),
+    })
+  }
+
   return {
-    color: ['#f43f5e', '#fbbf24', '#10b981'],
+    color: ['#0f766e', '#dc2626', '#f59e0b', '#2563eb'],
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
       borderColor: '#e2e8f0',
       borderWidth: 1,
-      padding: [10, 15],
-      textStyle: { color: '#0f172a', fontFamily: 'monospace' },
-      extraCssText: 'box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px;',
+      textStyle: { color: '#334155' },
+      extraCssText: 'box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); border-radius: 8px;',
     },
     legend: {
+      type: 'scroll',
       bottom: 0,
       icon: 'circle',
-      itemGap: 20,
-      textStyle: { color: '#64748b', fontWeight: 'bold' },
-      data: [...props.cities],
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { color: '#64748b', fontSize: 12 },
+      data: data.map((item) => item.name),
     },
     radar: {
-      indicator: [
-        { name: 'PM2.5', max: 200 },
-        { name: 'PM10',  max: 200 },
-        { name: 'NO2',   max: 100 },
-        { name: 'SO2',   max: 100 },
-        { name: 'CO',    max: 5   },
-        { name: 'O3',    max: 200 },
-      ],
+      center: ['50%', '48%'],
+      radius: '62%',
       shape: 'polygon',
-      radius: '65%',
-      axisName: {
-        color: '#64748b',
-        fontWeight: 'bold',
-        fontFamily: 'monospace',
-      },
-      splitArea: {
-        areaStyle: { color: ['#f8fafc', '#ffffff'] },
-      },
-      axisLine:  { lineStyle: { color: '#e2e8f0' } },
+      indicator: metrics.map((metric) => ({
+        name: metric.name,
+        max: maxForMetric(metric.key, metric.fallbackMax),
+      })),
+      axisName: { color: '#64748b', fontSize: 12 },
+      splitNumber: 4,
+      splitArea: { areaStyle: { color: ['#f8fafc', '#ffffff'] } },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
       splitLine: { lineStyle: { color: '#e2e8f0' } },
     },
     series: [
       {
-        name: '城市污染物对比',
+        name: '污染物雷达',
         type: 'radar',
-        symbol: 'none',
+        symbolSize: 3,
         lineStyle: { width: 2 },
-        areaStyle: { opacity: 0.15 },
-        data: seriesData,
+        areaStyle: { opacity: 0.08 },
+        emphasis: { focus: 'series' },
+        data,
       },
     ],
   }
@@ -118,7 +146,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => props.rawData,
+  () => [props.rawData, props.selectedCity],
   () => nextTick(render),
   { deep: true },
 )
@@ -126,8 +154,12 @@ watch(
 
 <template>
   <div class="w-full">
-    <h3 class="mb-1 text-base font-bold text-slate-800">多维污染物因子对抗分析</h3>
-    <p class="mb-4 text-xs text-slate-500">六项主要污染物指标分布视图 · 雷达交叠对比</p>
-    <div ref="elRef" class="h-[320px] w-full" />
+    <div class="mb-4">
+      <h3 class="text-base font-bold text-slate-800">污染物特征雷达</h3>
+      <p class="mt-1 text-xs text-slate-500">
+        {{ selectedCity === 'all' ? '高风险城市对比' : '所选城市与整体均值对比' }}
+      </p>
+    </div>
+    <div ref="elRef" class="h-[340px] w-full" />
   </div>
 </template>

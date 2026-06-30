@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-06-30 04:11:13",
+  "input_dataset": "data\\warehouse\\air_quality_city_month.csv",
+  "rubric_mapping": [
+    {
+      "level": "A 类基础算法",
+      "algorithm": "Top-N 风险排名",
+      "evidence": "data\\analysis_results\\city_risk_ranking.csv"
+    },
+    {
+      "level": "B 类数据挖掘算法",
+      "algorithm": "K-Means 城市污染画像聚类",
+      "evidence": [
+        "data\\analysis_results\\kmeans_parameter_eval.csv",
+        "data\\analysis_results\\city_cluster_assignments.csv",
+        "data\\analysis_results\\cluster_summary.csv"
+      ]
+    },
+    {
+      "level": "C 类机器学习算法",
+      "algorithm": "Logistic Regression 下月污染风险分类",
+      "evidence": [
+        "data\\analysis_results\\logistic_parameter_eval.csv",
+        "data\\analysis_results\\logistic_predictions.csv"
+      ]
+    },
+    {
+      "level": "时间序列预测创新项",
+      "algorithm": "Ridge Regression 下月 AQI 预测",
+      "evidence": [
+        "data\\analysis_results\\ridge_parameter_eval.csv",
+        "data\\analysis_results\\aqi_prediction_predictions.csv",
+        "data\\analysis_results\\ridge_coefficients.csv"
+      ]
+    }
+  ],
+  "top_risk_cities": [
+    {
+      "rank": 1,
+      "city": "石家庄",
+      "province": "河北省",
+      "region": "华北",
+      "risk_score": 100.0,
+      "avg_aqi": 117.42,
+      "max_aqi": 162.0,
+      "polluted_rate": 0.8178,
+      "avg_pm25": 72.81
+    },
+    {
+      "rank": 2,
+      "city": "太原",
+      "province": "山西省",
+      "region": "华北",
+      "risk_score": 80.7844,
+      "avg_aqi": 103.86,
+      "max_aqi": 148.0,
+      "polluted_rate": 0.5598,
+      "avg_pm25": 64.39
+    },
+    {
+      "rank": 3,
+      "city": "乌鲁木齐",
+      "province": "新疆维吾尔自治区",
+      "region": "西北",
+      "risk_score": 78.9906,
+      "avg_aqi": 102.72,
+      "max_aqi": 145.0,
+      "polluted_rate": 0.5438,
+      "avg_pm25": 63.69
+    },
+    {
+      "rank": 4,
+      "city": "西安",
+      "province": "陕西省",
+      "region": "西北",
+      "risk_score": 72.1489,
+      "avg_aqi": 98.49,
+      "max_aqi": 137.0,
+      "polluted_rate": 0.459,
+      "avg_pm25": 61.06
+    },
+    {
+      "rank": 5,
+      "city": "郑州",
+      "province": "河南省",
+      "region": "华中",
+      "risk_score": 71.603,
+      "avg_aqi": 97.83,
+      "max_aqi": 138.0,
+      "polluted_rate": 0.4483,
+      "avg_pm25": 60.65
+    },
+    {
+      "rank": 6,
+      "city": "北京",
+      "province": "北京市",
+      "region": "华北",
+      "risk_score": 65.0602,
+      "avg_aqi": 92.57,
+      "max_aqi": 137.0,
+      "polluted_rate": 0.3496,
+      "avg_pm25": 57.39
+    },
+    {
+      "rank": 7,
+      "city": "兰州",
+      "province": "甘肃省",
+      "region": "西北",
+      "risk_score": 62.1978,
+      "avg_aqi": 91.07,
+      "max_aqi": 133.0,
+      "polluted_rate": 0.3126,
+      "avg_pm25": 56.46
+    },
+    {
+      "rank": 8,
+      "city": "洛阳",
+      "province": "河南省",
+      "region": "华中",
+      "risk_score": 61.0972,
+      "avg_aqi": 90.68,
+      "max_aqi": 131.0,
+      "polluted_rate": 0.2973,
+      "avg_pm25": 56.23
+    },
+    {
+      "rank": 9,
+      "city": "天津",
+      "province": "天津市",
+      "region": "华北",
+      "risk_score": 58.5743,
+      "avg_aqi": 88.06,
+      "max_aqi": 132.0,
+      "polluted_rate": 0.2626,
+      "avg_pm25": 54.6
+    },
+    {
+      "rank": 10,
+      "city": "呼和浩特",
+      "province": "内蒙古自治区",
+      "region": "华北",
+      "risk_score": 52.5225,
+      "avg_aqi": 83.53,
+      "max_aqi": 128.0,
+      "polluted_rate": 0.1841,
+      "avg_pm25": 51.79
+    }
+  ],
+  "kmeans": {
+    "algorithm": "K-Means",
+    "selected_k": 3,
+    "selected_k_reason": "k=3 对应低污染、中等波动、高污染风险三类业务画像，便于课程报告解释；同时保留 k=2..6 的参数对比。",
+    "selected_inertia": 61.75217,
+    "selected_silhouette": 0.574013,
+    "iterations": 7,
+    "parameter_eval": "data\\analysis_results\\kmeans_parameter_eval.csv",
+    "assignments": "data\\analysis_results\\city_cluster_assignments.csv",
+    "summary": "data\\analysis_results\\cluster_summary.csv"
+  },
+  "supervised_learning": {
+    "dataset": {
+      "sample_count": 660,
+      "train_count": 540,
+      "test_count": 120,
+      "test_positive_count": 17,
+      "target": "next_month_avg_aqi / next_month_polluted"
+    },
+    "ridge_regression": {
+      "best_alpha": 10.0,
+      "mae": 0.8495,
+      "rmse": 1.0608,
+      "r2": 0.9977,
+      "baseline_mae": 7.245,
+      "baseline_rmse": 7.3321,
+      "parameter_eval": "data\\analysis_results\\ridge_parameter_eval.csv",
+      "predictions": "data\\analysis_results\\aqi_prediction_predictions.csv",
+      "coefficients": "data\\analysis_results\\ridge_coefficients.csv"
+    },
+    "logistic_regression": {
+      "best_lambda": 0.0,
+      "accuracy": 0.9583,
+      "precision": 1.0,
+      "recall": 0.7059,
+      "f1": 0.8276,
+      "parameter_eval": "data\\analysis_results\\logistic_parameter_eval.csv",
+      "predictions": "data\\analysis_results\\logistic_predictions.csv"
+    }
+  },
+  "conclusion": "项目已实现基础排名、数据挖掘聚类、机器学习分类和时间序列预测，并提供参数对比与实验指标。"
+}

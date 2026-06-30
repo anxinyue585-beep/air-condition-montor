@@ -42,7 +42,7 @@ function toSparklinePoints(trend: number[]) {
 <template>
   <div class="relative overflow-hidden rounded-b-xl border border-slate-200 bg-white shadow-sm">
     <div v-if="loading" class="absolute inset-0 z-10 bg-white p-4">
-      <div v-for="i in 8" :key="i" class="mb-4 flex animate-pulse-fast">
+      <div v-for="i in 8" :key="i" class="mb-4 flex animate-pulse">
         <div class="mr-4 h-8 w-1/6 rounded bg-slate-100" />
         <div class="mr-4 h-8 w-1/4 rounded bg-slate-100" />
         <div class="mr-4 h-8 w-1/6 rounded bg-slate-100" />

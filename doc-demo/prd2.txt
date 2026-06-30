@@ -81,23 +81,16 @@ Plaintext
 src/
 
 ├── api/
-
 │ ├── index.js # API 请求总出口
-
 │ └── dataset.json # 存放 Mock 原始数据集 (JSON数组)
-
 ├── components/
-
 │ ├── DataTable.vue # 表格核心组件
-
 │ └── StatusBadge.vue # 状态标签组件
-
 ├── views/
-
 │ └── DataCenter.vue # 数据中心主页面
 
 2. Mock 数据结构 (api/dataset.json)
-
+ 
 JSON
 
 

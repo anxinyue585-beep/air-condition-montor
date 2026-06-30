@@ -1,0 +1,46 @@
+{
+  "dataset": "air_quality_clean",
+  "version": "2026-06-30",
+  "generated_at": "2026-06-30 03:46:03",
+  "files": {
+    "raw_seed": "data\\raw\\air_quality_seed.csv",
+    "raw_dirty_sample": "data\\raw\\air_quality_raw_dirty_sample.csv",
+    "clean_seed": "data\\processed\\air_quality_seed_clean.csv",
+    "clean_full_csv": "data\\processed\\air_quality_clean.csv",
+    "city_day_warehouse": "data\\warehouse\\air_quality_city_day.csv",
+    "city_month_warehouse": "data\\warehouse\\air_quality_city_month.csv",
+    "frontend_sample": "data\\processed\\air_quality_frontend_sample.json",
+    "quality_report": "data\\processed\\data_quality_report.json"
+  },
+  "summary": {
+    "clean_rows": 1051200,
+    "city_count": 60,
+    "station_count": 120,
+    "date_range": [
+      "2025-01-01",
+      "2025-12-31"
+    ],
+    "level_counts": {
+      "污染": 83832,
+      "良": 586885,
+      "优": 380483
+    },
+    "region_counts": {
+      "华北": 87600,
+      "华东": 332880,
+      "华中": 105120,
+      "华南": 175200,
+      "西南": 140160,
+      "西北": 122640,
+      "东北": 87600
+    },
+    "primary_pollutant_counts": {
+      "PM2.5": 224591,
+      "O3": 824968,
+      "PM10": 1641
+    },
+    "city_day_rows": 21900,
+    "city_month_rows": 720,
+    "frontend_sample_rows": 504
+  }
+}

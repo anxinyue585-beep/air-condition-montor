@@ -1,0 +1,151 @@
+name: air-quality-bigdata
+
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: aq-namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    environment:
+      CLUSTER_NAME: air-quality-cluster
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ..:/workspace:ro
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: aq-datanode
+    restart: unless-stopped
+    depends_on:
+      - namenode
+    ports:
+      - "9864:9864"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+      SERVICE_PRECONDITION: namenode:9870
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: aq-resourcemanager
+    restart: unless-stopped
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "8088:8088"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      YARN_CONF_yarn_resourcemanager_hostname: resourcemanager
+      SERVICE_PRECONDITION: namenode:9000 datanode:9864
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: aq-nodemanager
+    restart: unless-stopped
+    depends_on:
+      - resourcemanager
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      YARN_CONF_yarn_resourcemanager_hostname: resourcemanager
+      SERVICE_PRECONDITION: resourcemanager:8088
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: aq-historyserver
+    restart: unless-stopped
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "8188:8188"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      SERVICE_PRECONDITION: namenode:9000 datanode:9864
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    container_name: aq-hive-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - hive_metastore_db:/var/lib/postgresql/data
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: aq-hive-metastore
+    restart: unless-stopped
+    depends_on:
+      - namenode
+      - datanode
+      - hive-metastore-postgresql
+    command: /opt/hive/bin/hive --service metastore
+    ports:
+      - "9083:9083"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: jdbc:postgresql://hive-metastore-postgresql/metastore
+      SERVICE_PRECONDITION: namenode:9000 datanode:9864 hive-metastore-postgresql:5432
+    volumes:
+      - ..:/workspace:ro
+
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: aq-hive-server
+    restart: unless-stopped
+    depends_on:
+      - hive-metastore
+    ports:
+      - "10000:10000"
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: jdbc:postgresql://hive-metastore-postgresql/metastore
+      HIVE_SITE_CONF_hive_metastore_uris: thrift://hive-metastore:9083
+      SERVICE_PRECONDITION: hive-metastore:9083
+    volumes:
+      - ..:/workspace:ro
+
+  spark-master:
+    image: bde2020/spark-master:3.3.0-hadoop3.3
+    container_name: aq-spark-master
+    restart: unless-stopped
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    environment:
+      INIT_DAEMON_STEP: setup_spark
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    volumes:
+      - ..:/workspace:ro
+
+  spark-worker:
+    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    container_name: aq-spark-worker
+    restart: unless-stopped
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      SPARK_MASTER: spark://spark-master:7077
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    volumes:
+      - ..:/workspace:ro
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:
+  hive_metastore_db:

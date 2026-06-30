@@ -1,55 +1,134 @@
 import { computed, ref, watch } from 'vue'
-import type { AirRecord, KpiItem, TimeDimension } from '../types/air'
+import dataset from '../../data/processed/air_quality_frontend_sample.json'
+import cityMonthCsv from '../../data/warehouse/air_quality_city_month.csv?raw'
+import type { AirRecord, DatasetRecord, KpiItem, TimeDimension } from '../types/air'
 
-export const CITIES = ['北京', '上海', '广州'] as const
+const SOURCE = dataset as DatasetRecord[]
+const ALL_DATA: AirRecord[] = SOURCE.map(({ city, date, aqi, pm25, pm10, so2, no2 }) => ({
+  city,
+  date,
+  aqi,
+  pm25,
+  pm10,
+  so2,
+  no2,
+}))
+
+export const CITIES: readonly string[] = [...new Set(SOURCE.map((item) => item.city))]
+
+interface CityMonthRow {
+  city: string
+  year_month: string
+  avg_aqi: string
+  avg_pm25: string
+  avg_pm10: string
+  avg_so2: string
+  avg_no2: string
+}
+
+function parseCityMonthCsv(csv: string): CityMonthRow[] {
+  const [headerLine, ...lines] = csv.trim().split(/\r?\n/)
+  const headers = headerLine.split(',')
+
+  return lines
+    .filter(Boolean)
+    .map((line) => {
+      const values = line.split(',')
+      return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ''])) as unknown as CityMonthRow
+    })
+}
+
+function toMonthlyAirRecords(csv: string) {
+  const allowedCities = new Set(CITIES)
+  const cityOrder = new Map(CITIES.map((city, index) => [city, index]))
+
+  return parseCityMonthCsv(csv)
+    .filter((row) => allowedCities.has(row.city))
+    .map((row) => ({
+      city: row.city,
+      date: row.year_month,
+      aqi: Math.round(Number(row.avg_aqi)),
+      pm25: Math.round(Number(row.avg_pm25)),
+      pm10: Math.round(Number(row.avg_pm10)),
+      so2: Math.round(Number(row.avg_so2)),
+      no2: Math.round(Number(row.avg_no2)),
+    }))
+    .sort((a, b) => {
+      const cityOrderDiff = (cityOrder.get(a.city) ?? 0) - (cityOrder.get(b.city) ?? 0)
+      if (cityOrderDiff !== 0) return cityOrderDiff
+      return a.date.localeCompare(b.date, 'zh')
+    })
+}
+
+const YEAR_MONTH_DATA: AirRecord[] = toMonthlyAirRecords(cityMonthCsv)
 
 const rawData = ref<AirRecord[]>([])
+const allData = ref<AirRecord[]>(ALL_DATA)
 const selectedCity = ref<string>('all')
 const selectedTime = ref<TimeDimension>('week')
 
-function getDateLabels(dim: TimeDimension): string[] {
-  if (dim === 'week') {
-    return ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-  }
-  if (dim === 'month') {
-    return Array.from({ length: 4 }, (_, i) => `第${i + 1}周`)
-  }
-  return Array.from({ length: 12 }, (_, i) => `${i + 1}月`)
+function uniqueDates(rows: AirRecord[]) {
+  return [...new Set(rows.map((item) => item.date))].sort((a, b) => a.localeCompare(b, 'zh'))
 }
 
-function generateMockData(dim: TimeDimension): AirRecord[] {
-  const data: AirRecord[] = []
-  const baseAqi: Record<string, number> = { 北京: 80, 上海: 55, 广州: 45 }
-  const dates = getDateLabels(dim)
+function average(rows: AirRecord[], field: keyof Pick<AirRecord, 'aqi' | 'pm25' | 'pm10' | 'so2' | 'no2'>) {
+  if (!rows.length) return 0
+  return Math.round(rows.reduce((sum, item) => sum + item[field], 0) / rows.length)
+}
 
-  for (const city of CITIES) {
-    for (const date of dates) {
-      const randomFluctuation = Math.floor(Math.random() * 40) - 10
-      const aqi = Math.max(20, (baseAqi[city] ?? 60) + randomFluctuation)
-      data.push({
-        city,
-        date,
-        aqi,
-        pm25: Math.floor(aqi * 0.7),
-        pm10: Math.floor(aqi * 1.1),
-        so2: Math.floor(Math.random() * 15 + 5),
-        no2: Math.floor(Math.random() * 25 + 10),
-      })
-    }
+function aggregateByMonth(rows: AirRecord[]) {
+  const grouped = new Map<string, AirRecord[]>()
+  for (const row of rows) {
+    const month = row.date.slice(0, 7)
+    const key = `${row.city}|${month}`
+    const bucket = grouped.get(key) ?? []
+    bucket.push(row)
+    grouped.set(key, bucket)
   }
-  return data
+
+  return [...grouped.entries()]
+    .map(([key, rows]) => {
+      const [city, month] = key.split('|')
+      return {
+        city,
+        date: month,
+        aqi: average(rows, 'aqi'),
+        pm25: average(rows, 'pm25'),
+        pm10: average(rows, 'pm10'),
+        so2: average(rows, 'so2'),
+        no2: average(rows, 'no2'),
+      }
+    })
+    .sort((a, b) => {
+      const cityOrder = CITIES.indexOf(a.city) - CITIES.indexOf(b.city)
+      if (cityOrder !== 0) return cityOrder
+      return a.date.localeCompare(b.date, 'zh')
+    })
+}
+
+function buildDataByDimension(dim: TimeDimension): AirRecord[] {
+  if (dim === 'year') {
+    return YEAR_MONTH_DATA.length ? YEAR_MONTH_DATA : aggregateByMonth(ALL_DATA)
+  }
+
+  const dates = uniqueDates(ALL_DATA)
+  const size = dim === 'week' ? 7 : 30
+  const selectedDates = new Set(dates.slice(-size))
+  return ALL_DATA.filter((item) => selectedDates.has(item.date))
 }
 
 function refreshData() {
-  rawData.value = generateMockData(selectedTime.value)
+  rawData.value = buildDataByDimension(selectedTime.value)
 }
 
-watch([selectedCity, selectedTime], () => {
+watch(selectedTime, () => {
   refreshData()
 })
 
+refreshData()
+
 export function useAirQualityData() {
-  const dateLabels = computed(() => getDateLabels(selectedTime.value))
+  const dateLabels = computed(() => uniqueDates(rawData.value))
 
   const filteredData = computed(() => {
     if (selectedCity.value === 'all') return rawData.value
@@ -60,9 +139,9 @@ export function useAirQualityData() {
     const data = filteredData.value
     if (!data.length) return []
 
-    const avgAqi = Math.round(data.reduce((sum, d) => sum + d.aqi, 0) / data.length)
-    const avgPm25 = Math.round(data.reduce((sum, d) => sum + d.pm25, 0) / data.length)
-    const avgPm10 = Math.round(data.reduce((sum, d) => sum + d.pm10, 0) / data.length)
+    const avgAqi = average(data, 'aqi')
+    const avgPm25 = average(data, 'pm25')
+    const avgPm10 = average(data, 'pm10')
     const goodDays = data.filter((d) => d.aqi <= 100).length
     const complianceRate = Math.round((goodDays / data.length) * 100)
 
@@ -97,7 +176,7 @@ export function useAirQualityData() {
         colorClass: 'bg-indigo-500',
       },
       {
-        title: '优良天数占比',
+        title: selectedTime.value === 'year' ? '优良月份占比' : '优良天数占比',
         value: complianceRate,
         unit: '%',
         textColor: 'text-teal-600',
@@ -126,6 +205,7 @@ export function useAirQualityData() {
 
   return {
     rawData,
+    allData,
     selectedCity,
     selectedTime,
     dateLabels,

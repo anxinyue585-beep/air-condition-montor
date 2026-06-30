@@ -1,0 +1,18 @@
+{
+  "dataset_name": "城市空气质量小时级实验数据集",
+  "base_sources": [
+    {
+      "name": "Beijing Multi-Site Air-Quality Data (UCI Machine Learning Repository)",
+      "url": "https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data",
+      "usage": "作为公开空气质量小时级字段结构、站点粒度和缺失值清洗流程参考。"
+    },
+    {
+      "name": "环境空气质量指数(AQI)技术规定 HJ 633-2012",
+      "url": "https://www.mee.gov.cn/",
+      "usage": "作为 AQI 等级划分、污染物字段和指标解释依据。"
+    }
+  ],
+  "project_seed": "src/api/dataset.json",
+  "generated_scope": "2025 年 60 个城市、120 个监测点、逐小时记录。",
+  "note": "课程环境未依赖外部数据库，完整数据由脚本按公开空气质量字段结构和项目样本可复现生成；后续可将真实下载数据替换到 raw 层后复用同一清洗流程。"
+}

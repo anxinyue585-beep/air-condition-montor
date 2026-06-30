@@ -8,8 +8,14 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.vite-cache
+.vite-build-check
 dist
 dist-ssr
+tmp-screenshots
+reports/demo-recording/
+reports/rendered_course_report/
+data/processed/air_quality_clean.csv
 *.local
 
 # Editor directories and files

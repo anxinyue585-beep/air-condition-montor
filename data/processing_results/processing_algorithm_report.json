@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-06-30 04:03:45",
+  "input_dataset": "data\\processed\\air_quality_clean.csv",
+  "rubric_mapping": [
+    {
+      "item": "数据清洗",
+      "score": 4,
+      "methods": [
+        "去重",
+        "缺失值填充",
+        "异常值截断",
+        "等级重算"
+      ],
+      "evidence": [
+        "data\\processing_results\\cleaning_algorithm_result.json",
+        "data\\processed\\data_quality_report.json"
+      ]
+    },
+    {
+      "item": "数据转换",
+      "score": 4,
+      "methods": [
+        "Min-Max 归一化",
+        "Z-Score 标准化",
+        "类别编码",
+        "时间字段派生"
+      ],
+      "evidence": [
+        "data\\processing_results\\air_quality_feature_sample.csv"
+      ]
+    },
+    {
+      "item": "数据聚合",
+      "score": 4,
+      "methods": [
+        "城市月度 GroupBy",
+        "区域月度 GroupBy",
+        "城市 AQI Top-N"
+      ],
+      "evidence": [
+        "data\\warehouse\\air_quality_region_month.csv",
+        "data\\warehouse\\air_quality_city_topn_processing.csv"
+      ]
+    },
+    {
+      "item": "数据筛选",
+      "score": 4,
+      "methods": [
+        "多条件过滤",
+        "高污染样本抽取",
+        "早晚高峰污染统计"
+      ],
+      "evidence": [
+        "data\\processing_results\\high_pollution_filter_sample.csv"
+      ]
+    },
+    {
+      "item": "数据优化",
+      "score": 4,
+      "methods": [
+        "year_month + region 分区索引",
+        "Spark repartition",
+        "Spark cache",
+        "Parquet 输出设计"
+      ],
+      "evidence": [
+        "data\\warehouse\\air_quality_partition_index.csv",
+        "scripts/spark_air_quality_etl.py"
+      ]
+    }
+  ],
+  "cleaning": {
+    "algorithm": "数据清洗",
+    "input": "data\\raw\\air_quality_raw_dirty_sample.csv",
+    "rules": [
+      "按 id + city + date 去重",
+      "数值缺失使用城市中位数或全局中位数填充",
+      "负数污染物修正为 0",
+      "AQI 超出 500 的异常值截断为 500",
+      "根据 AQI 重算空气质量等级"
+    ],
+    "dirty_sample_stats": {
+      "raw_rows": 41,
+      "duplicate_rows_detected": 1,
+      "missing_cells_detected": 2,
+      "negative_cells_detected": 1,
+      "aqi_outlier_rows_detected": 1
+    },
+    "cleaning_actions_from_dataset_build": {
+      "duplicates_removed": 1,
+      "missing_values_filled": 2,
+      "negative_values_fixed": 1,
+      "outliers_capped": 1,
+      "clean_rows": 40
+    }
+  },
+  "transformation": {
+    "feature_sample_rows": 20000,
+    "level_encoding": {
+      "优": 0,
+      "良": 1,
+      "污染": 2
+    },
+    "numeric_features": [
+      "aqi",
+      "pm25",
+      "pm10"
+    ],
+    "output": "data\\processing_results\\air_quality_feature_sample.csv"
+  },
+  "aggregation": {
+    "city_month_rows": 720,
+    "region_month_rows": 84,
+    "city_topn_rows": 20
+  },
+  "filtering": {
+    "high_pollution_rows": 19922,
+    "rush_hour_high_pollution_rows": 5872,
+    "sample_rows_written": 500,
+    "rule": "aqi >= 101 and pm25 >= 75"
+  },
+  "optimization": {
+    "partition_keys": [
+      "year_month",
+      "region"
+    ],
+    "partition_count": 84,
+    "shuffle_partitions_for_spark": 24,
+    "cache_strategy": "Spark ETL 对清洗后的 DataFrame 使用 cache()，并按 year_month、region repartition。"
+  },
+  "dataset_checks": {
+    "row_count": 1051200,
+    "duplicate_rows": 0,
+    "invalid_level_rows": 0,
+    "level_counts": {
+      "污染": 83832,
+      "良": 586885,
+      "优": 380483
+    },
+    "primary_pollutant_counts": {
+      "PM2.5": 224591,
+      "O3": 824968,
+      "PM10": 1641
+    }
+  }
+}

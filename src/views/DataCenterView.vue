@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import PaginationControls from '../components/PaginationControls.vue'
 import { CITIES, useAirQualityData } from '../composables/useAirQualityData'
 
-const { rawData, getAqiLevelText, getAqiLevelClass } = useAirQualityData()
+const { allData, getAqiLevelText, getAqiLevelClass } = useAirQualityData()
 
 const filterCity = ref<string>('all')
 const filterLevel = ref<'all' | 'excellent' | 'good' | 'polluted'>('all')
+const currentPage = ref(1)
+const pageSize = ref(20)
+const pageSizeOptions = [10, 20, 50, 100]
 
 function levelOf(aqi: number): 'excellent' | 'good' | 'polluted' {
   if (aqi <= 50) return 'excellent'
@@ -14,31 +18,39 @@ function levelOf(aqi: number): 'excellent' | 'good' | 'polluted' {
 }
 
 const filteredRows = computed(() => {
-  let rows = [...rawData.value]
+  let rows = [...allData.value]
   if (filterCity.value !== 'all') {
-    rows = rows.filter((r) => r.city === filterCity.value)
+    rows = rows.filter((row) => row.city === filterCity.value)
   }
   if (filterLevel.value !== 'all') {
-    rows = rows.filter((r) => levelOf(r.aqi) === filterLevel.value)
+    rows = rows.filter((row) => levelOf(row.aqi) === filterLevel.value)
   }
   return rows.sort((a, b) => {
-    const c = a.city.localeCompare(b.city, 'zh')
-    if (c !== 0) return c
+    const cityOrder = a.city.localeCompare(b.city, 'zh')
+    if (cityOrder !== 0) return cityOrder
     return a.date.localeCompare(b.date, 'zh')
   })
 })
 
+const totalRows = computed(() => filteredRows.value.length)
+const pageStartIndex = computed(() => (currentPage.value - 1) * pageSize.value)
+const paginatedRows = computed(() => filteredRows.value.slice(pageStartIndex.value, pageStartIndex.value + pageSize.value))
+
+watch([filterCity, filterLevel], () => {
+  currentPage.value = 1
+})
+
 function exportCsv() {
   const header = ['日期', '城市', 'AQI', 'PM2.5', 'PM10', '级别']
-  const lines = filteredRows.value.map((r) => [
-    r.date,
-    r.city,
-    String(r.aqi),
-    String(r.pm25),
-    String(r.pm10),
-    getAqiLevelText(r.aqi),
+  const lines = filteredRows.value.map((row) => [
+    row.date,
+    row.city,
+    String(row.aqi),
+    String(row.pm25),
+    String(row.pm10),
+    getAqiLevelText(row.aqi),
   ])
-  const csv = [header.join(','), ...lines.map((l) => l.join(','))].join('\r\n')
+  const csv = [header.join(','), ...lines.map((line) => line.join(','))].join('\r\n')
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -51,8 +63,11 @@ function exportCsv() {
 
 <template>
   <div class="animate-fade-in-up rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <h2 class="text-lg font-bold text-slate-800">原始数据查询</h2>
+    <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">原始数据查询</h2>
+        <p class="mt-1 text-sm text-slate-500">支持按城市、空气质量级别筛选，并按分页查看明细记录。</p>
+      </div>
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2">
           <span class="text-sm text-slate-500">城市</span>
@@ -61,7 +76,7 @@ function exportCsv() {
             class="rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700"
           >
             <option value="all">全部</option>
-            <option v-for="c in CITIES" :key="c" :value="c">{{ c }}</option>
+            <option v-for="city in CITIES" :key="city" :value="city">{{ city }}</option>
           </select>
         </div>
         <div class="flex items-center gap-2">
@@ -93,8 +108,9 @@ function exportCsv() {
         </button>
       </div>
     </div>
+
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-slate-500">
+      <table class="w-full min-w-[760px] text-left text-sm text-slate-500">
         <thead class="border-b bg-slate-50 text-xs uppercase text-slate-700">
           <tr>
             <th class="px-6 py-3">日期</th>
@@ -107,20 +123,17 @@ function exportCsv() {
         </thead>
         <tbody>
           <tr
-            v-for="(row, index) in filteredRows"
-            :key="`${row.city}-${row.date}-${index}`"
+            v-for="(row, index) in paginatedRows"
+            :key="`${row.city}-${row.date}-${pageStartIndex + index}`"
             class="border-b bg-white hover:bg-slate-50"
           >
             <td class="px-6 py-4">{{ row.date }}</td>
             <td class="px-6 py-4 font-medium text-slate-900">{{ row.city }}</td>
-            <td class="px-6 py-4">{{ row.aqi }}</td>
-            <td class="px-6 py-4">{{ row.pm25 }}</td>
-            <td class="px-6 py-4">{{ row.pm10 }}</td>
+            <td class="px-6 py-4 font-mono">{{ row.aqi }}</td>
+            <td class="px-6 py-4 font-mono">{{ row.pm25 }}</td>
+            <td class="px-6 py-4 font-mono">{{ row.pm10 }}</td>
             <td class="px-6 py-4">
-              <span
-                class="rounded px-2 py-1 text-xs font-medium text-white"
-                :class="getAqiLevelClass(row.aqi)"
-              >
+              <span class="rounded px-2 py-1 text-xs font-medium text-white" :class="getAqiLevelClass(row.aqi)">
                 {{ getAqiLevelText(row.aqi) }}
               </span>
             </td>
@@ -128,6 +141,14 @@ function exportCsv() {
         </tbody>
       </table>
     </div>
+
     <p v-if="!filteredRows.length" class="py-8 text-center text-slate-400">暂无数据</p>
+    <PaginationControls
+      v-else
+      v-model:page="currentPage"
+      v-model:page-size="pageSize"
+      :total="totalRows"
+      :page-size-options="pageSizeOptions"
+    />
   </div>
 </template>

@@ -1,0 +1,25 @@
+{
+  "algorithm": "数据清洗",
+  "input": "data\\raw\\air_quality_raw_dirty_sample.csv",
+  "rules": [
+    "按 id + city + date 去重",
+    "数值缺失使用城市中位数或全局中位数填充",
+    "负数污染物修正为 0",
+    "AQI 超出 500 的异常值截断为 500",
+    "根据 AQI 重算空气质量等级"
+  ],
+  "dirty_sample_stats": {
+    "raw_rows": 41,
+    "duplicate_rows_detected": 1,
+    "missing_cells_detected": 2,
+    "negative_cells_detected": 1,
+    "aqi_outlier_rows_detected": 1
+  },
+  "cleaning_actions_from_dataset_build": {
+    "duplicates_removed": 1,
+    "missing_values_filled": 2,
+    "negative_values_fixed": 1,
+    "outliers_capped": 1,
+    "clean_rows": 40
+  }
+}
