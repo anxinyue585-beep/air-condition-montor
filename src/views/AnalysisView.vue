@@ -94,10 +94,14 @@ function clusterAccent(name: string) {
             基于城市月度空气质量数据，展示 Top-N 风险排名、K-Means 聚类、Logistic 风险分类与 Ridge AQI 预测结果。
           </p>
         </div>
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <div class="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
             <p class="text-xs text-slate-500">训练样本</p>
             <p class="mt-1 font-mono text-xl font-bold text-slate-900">{{ dataset.train_count }}</p>
+          </div>
+          <div class="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+            <p class="text-xs text-slate-500">验证样本</p>
+            <p class="mt-1 font-mono text-xl font-bold text-slate-900">{{ dataset.validation_count }}</p>
           </div>
           <div class="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
             <p class="text-xs text-slate-500">测试样本</p>
@@ -139,7 +143,7 @@ function clusterAccent(name: string) {
       </div>
 
       <div class="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-bold text-slate-900">模型核心指标</h2>
+        <h2 class="text-lg font-bold text-slate-900">隔离测试集指标</h2>
         <div class="mt-5 space-y-4">
           <div class="rounded-lg border border-slate-100 bg-slate-50 p-4">
             <p class="text-sm font-semibold text-slate-700">Logistic Regression</p>
@@ -196,7 +200,7 @@ function clusterAccent(name: string) {
 
     <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <div class="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-bold text-slate-900">参数对比</h2>
+            <h2 class="text-lg font-bold text-slate-900">验证集参数对比</h2>
         <div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
           <div>
             <p class="mb-2 text-sm font-semibold text-slate-700">K-Means</p>
@@ -224,7 +228,7 @@ function clusterAccent(name: string) {
                 </tr>
               </tbody>
             </table>
-            <p v-if="bestLogistic" class="mt-2 text-xs text-slate-400">最佳 λ={{ bestLogistic.lambda }}，准确率 {{ bestLogistic.accuracy }}</p>
+            <p v-if="bestLogistic" class="mt-2 text-xs text-slate-400">验证集选择 λ={{ bestLogistic.lambda }}，F1 {{ bestLogistic.f1 }}</p>
           </div>
           <div>
             <p class="mb-2 text-sm font-semibold text-slate-700">Ridge</p>
@@ -238,7 +242,7 @@ function clusterAccent(name: string) {
                 </tr>
               </tbody>
             </table>
-            <p v-if="bestRidge" class="mt-2 text-xs text-slate-400">最佳 α={{ bestRidge.alpha }}，R2 {{ bestRidge.r2 }}</p>
+            <p v-if="bestRidge" class="mt-2 text-xs text-slate-400">验证集选择 α={{ bestRidge.alpha }}，RMSE {{ bestRidge.rmse }}</p>
           </div>
         </div>
       </div>

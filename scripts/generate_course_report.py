@@ -375,7 +375,7 @@ def add_cover(doc: Document):
     add_text(doc, "城市空气质量大数据分析与可视化系统", size=17, bold=True, color=DARK_BLUE, after=18)
     add_text(
         doc,
-        "围绕城市空气质量数据完成数据建设、Hadoop/Hive/Spark 平台部署、数据处理算法、数据分析算法和前端可视化展示。",
+        "围绕城市空气质量数据完成数据建设、处理分析与前端展示，并提供 Hadoop/Hive/Spark 平台部署设计和待验收脚本。",
         size=11,
         color=MUTED,
         after=18,
@@ -385,13 +385,13 @@ def add_cover(doc: Document):
         ("课程名称", "互联网大数据应用技术实践"),
         ("团队成员", "刘嘉晨（组长）、顾跃庭（组员）"),
         ("技术路线", "Vue 3 + TypeScript + ECharts + Hadoop + Hive + Spark + 机器学习算法"),
-        ("报告日期", "2026年6月30日"),
+        ("报告日期", "2026年7月11日"),
     ]
     add_simple_table(doc, ["项目", "内容"], rows, [1700, 7660])
     add_callout(
         doc,
         "报告定位",
-        "本报告按课程评分细则组织内容，重点说明数据来源、数据规模、平台部署、处理算法、分析模型、可视化系统与创新点，并给出可复现实验材料。",
+        "本报告按课程评分细则组织内容，重点说明数据来源、数据规模、平台部署设计与实际验收状态、处理算法、分析模型和可视化系统，并区分已验证结果与待验证项目。",
     )
     doc.add_page_break()
 
@@ -401,20 +401,20 @@ def add_rubric_mapping(doc: Document):
     add_text(
         doc,
         "本项目以城市空气质量数据为对象，构建了覆盖 60 个城市、120 个监测点、2025 全年小时级记录的百万级实验数据集。"
-        "项目完成了从数据建设、清洗转换、仓库聚合、Hadoop/Hive/Spark 平台部署，到 Top-N、K-Means、Logistic Regression 和 Ridge Regression 算法分析的完整流程，"
-        "并以 Vue 3 + ECharts 实现数据大屏、数据明细、数据集展示与算法分析页面。",
+        "项目已完成数据生成、清洗转换、仓库聚合、Top-N、K-Means、Logistic Regression、Ridge Regression 和 Vue 3 可视化。"
+        "Hadoop/Hive/Spark 部分已提供 Docker Compose、HDFS、Hive、Spark 和证据采集脚本，但因当前验收机未安装 Docker，尚未完成容器启动与平台运行验收。",
     )
     rows = [
         ("项目选题与需求分析", "10", "围绕城市空气质量监测、风险识别和可视化决策展开，需求包含查询、筛选、算法分析和多图表展示。"),
         ("数据集建设", "16", "清洗数据 1,051,200 条，提供 Raw/Processed/Warehouse/App Sample 分层存储、字段字典和质量报告。"),
-        ("Hadoop/Hive/Spark 平台", "16", "提供 Docker Compose 集群、HDFS 上传脚本、Hive 外部表与聚合 SQL、Spark ETL 作业。"),
+        ("Hadoop/Hive/Spark 平台", "16", "已提供 Docker Compose、HDFS 上传、Hive SQL、Spark ETL 与一键验收脚本；实际平台运行待 Docker 环境补齐后验证。"),
         ("数据处理算法设计", "20", "覆盖清洗、转换、聚合、筛选和优化 5 类方法，含分区索引、Spark cache 与 Parquet 输出。"),
         ("数据分析算法应用", "20", "实现 Top-N、K-Means、Logistic Regression 和 Ridge Regression，包含参数对比和实验指标。"),
         ("数据可视化", "8", "实现数据大屏、明细查询、数据集展示和算法分析页面，包含折线图、柱状图、雷达图、平行坐标等。"),
-        ("创新性", "6", "引入机器学习分类、时间序列预测、统一数据源和完整可复现脚本链路。"),
+        ("创新性", "6", "引入机器学习分类、时间序列预测、统一数据源和可复现的数据与算法脚本链路。"),
         ("项目答辩", "4", "已整理运行命令、验证清单和材料目录，可用于录屏答辩展示。"),
     ]
-    add_simple_table(doc, ["一级指标", "分值", "本项目完成情况"], rows, [2100, 800, 6460])
+    add_simple_table(doc, ["一级指标", "分值", "当前状态与证据"], rows, [2100, 800, 6460])
     add_text(
         doc,
         "从评分细则看，本项目已满足“至少实现一种数据分析算法”的硬性要求，并进一步实现机器学习分类与预测分析，具备优秀等级所需的算法优化和参数分析材料。",
@@ -451,7 +451,11 @@ def add_project_section(doc: Document):
 def add_data_section(doc: Document):
     add_heading(doc, "二、数据集建设", 1)
     summary = manifest["summary"]
-    data_size_mb = (ROOT / "data/processed/air_quality_clean.csv").stat().st_size / 1024 / 1024
+    clean_csv = ROOT / "data/processed/air_quality_clean.csv"
+    if clean_csv.exists():
+        data_size_note = f"CSV 文件约 {clean_csv.stat().st_size / 1024 / 1024:.1f} MB"
+    else:
+        data_size_note = "主 CSV 未纳入 Git，可通过 build_air_quality_dataset.py 重新生成"
     add_heading(doc, "2.1 数据来源与生成口径", 2)
     add_text(
         doc,
@@ -462,7 +466,7 @@ def add_data_section(doc: Document):
         ("时间范围", f"{summary['date_range'][0]} 至 {summary['date_range'][1]}"),
         ("时间粒度", "小时级"),
         ("空间范围", f"{summary['city_count']} 个城市、{summary['station_count']} 个监测点"),
-        ("主数据规模", f"{summary['clean_rows']:,} 条，CSV 文件约 {data_size_mb:.1f} MB"),
+        ("主数据规模", f"{summary['clean_rows']:,} 条，{data_size_note}"),
         ("聚合结果", f"城市日表 {summary['city_day_rows']:,} 行，城市月表 {summary['city_month_rows']:,} 行"),
     ]
     add_simple_table(doc, ["项目", "说明"], rows, [1800, 7560])
@@ -498,8 +502,8 @@ def add_platform_section(doc: Document):
     add_heading(doc, "三、Hadoop/Hive/Spark 平台部署", 1)
     add_text(
         doc,
-        "平台部署采用 Docker Compose，集成 Hadoop HDFS、YARN、Hive Metastore、HiveServer2、Spark Master 和 Spark Worker。"
-        "平台用于存储百万级清洗数据、执行 Hive SQL 查询和 Spark 分布式 ETL。",
+        "平台设计采用 Docker Compose，计划集成 Hadoop HDFS、YARN、Hive Metastore、HiveServer2、Spark Master 和 Spark Worker。"
+        "配置目标是存储百万级清洗数据、执行 Hive SQL 查询和 Spark 分布式 ETL；当前仅完成配置、脚本与数据前置检查，尚未完成容器运行验收。",
     )
     rows = [
         ("Hadoop NameNode", "aq-namenode", "HDFS 元数据管理，端口 9870/9000"),
@@ -513,12 +517,12 @@ def add_platform_section(doc: Document):
     add_heading(doc, "3.1 HDFS 与 Hive 设计", 2)
     add_text(
         doc,
-        "清洗后的 `air_quality_clean.csv` 上传到 HDFS 路径 `/warehouse/air_quality/clean/air_quality_clean.csv`。Hive 使用外部表 `air_quality_clean_csv` 指向 HDFS 数据，并进一步创建城市月度聚合表 `air_quality_city_month` 与城市平均 AQI Top-N 表 `air_quality_city_topn`。"
+        "上传脚本设计为将 `air_quality_clean.csv` 写入 HDFS 路径 `/warehouse/air_quality/clean/air_quality_clean.csv`。Hive SQL 设计为创建外部表 `air_quality_clean_csv`、城市月度聚合表 `air_quality_city_month` 与城市平均 AQI Top-N 表 `air_quality_city_topn`；实际行数查询待 Docker 平台运行后验收。"
     )
     add_heading(doc, "3.2 Spark ETL 设计", 2)
     add_text(
         doc,
-        "Spark 作业 `scripts/spark_air_quality_etl.py` 读取 HDFS CSV，执行字段类型转换、清洗、缓存、分区、城市日/月聚合和 Top-N 输出。作业输出 Parquet 与 CSV 结果，便于后续 Hive/Spark 查询和前端分析。"
+        "Spark 作业 `scripts/spark_air_quality_etl.py` 设计为读取 HDFS CSV，执行字段类型转换、清洗、缓存、分区、城市日/月聚合和 Top-N 输出。Parquet 与 CSV 输出路径已定义，但尚无真实容器执行记录。"
     )
     rows = [
         ("启动平台", "powershell -ExecutionPolicy Bypass -File scripts\\platform_up.ps1"),
@@ -530,8 +534,8 @@ def add_platform_section(doc: Document):
     add_simple_table(doc, ["步骤", "命令"], rows, [1800, 7560])
     add_callout(
         doc,
-        "平台部署结论",
-        "项目已提供完整的平台配置、启动脚本、HDFS 上传脚本、Hive SQL、Spark ETL 作业和验收命令，能够支撑课程平台部署评分项。",
+        "平台当前状态",
+        "项目已提供平台配置、启动脚本、HDFS 上传脚本、Hive SQL、Spark ETL 作业和一键证据采集命令。2026-07-11 数据前置检查已通过，但 Docker CLI 缺失，HDFS、Hive、Spark 均未实际启动，因此本报告不将平台部署表述为已完成。",
         fill="F8FAFC",
     )
 
@@ -583,7 +587,7 @@ def add_analysis_section(doc: Document):
     ds = analysis["supervised_learning"]["dataset"]
     add_text(
         doc,
-        f"分析算法输入为城市月度聚合表，共 720 条城市月度记录。监督学习任务采用“当前月特征预测下月结果”的样本构造方式，样本数 {ds['sample_count']}，训练集 {ds['train_count']}，测试集 {ds['test_count']}。"
+        f"分析算法输入为城市月度聚合表，共 720 条城市月度记录。监督学习任务采用“当前月特征预测下月结果”的样本构造方式，样本数 {ds['sample_count']}，训练集 {ds['train_count']}，验证集 {ds['validation_count']}，测试集 {ds['test_count']}。数据按目标月份顺序划分，超参数仅在验证集选择，测试集只用于最终评价。"
     )
     add_simple_table(
         doc,
@@ -630,8 +634,8 @@ def add_analysis_section(doc: Document):
     logi = analysis["supervised_learning"]["logistic_regression"]
     add_text(
         doc,
-        f"Logistic Regression 将 next_month_avg_aqi >= 100 定义为下月污染风险。最佳模型准确率 {logi['accuracy']:.4f}，Precision {logi['precision']:.4f}，Recall {logi['recall']:.4f}，F1 {logi['f1']:.4f}。"
-        "实验结果说明模型误报率较低，但仍有部分污染月份未被提前捕捉，后续可通过加入天气和节假日特征提升召回率。"
+        f"Logistic Regression 将 next_month_avg_aqi >= 100 定义为下月污染风险。验证集选择 lambda={logi['best_lambda']}（验证 F1={logi['validation_f1']:.4f}），训练集与验证集重训后，隔离测试集 Accuracy={logi['accuracy']:.4f}，Precision={logi['precision']:.4f}，Recall={logi['recall']:.4f}，F1={logi['f1']:.4f}。"
+        f"验证期正样本仅 {ds['validation_positive_count']} 条，参数区分度有限；实验结果说明模型误报率较低，但仍有部分污染月份未被提前捕捉，后续应引入多年真实数据并采用滚动时间验证。下表为验证集参数评估结果。"
     )
     add_simple_table(
         doc,
@@ -644,8 +648,8 @@ def add_analysis_section(doc: Document):
     ridge = analysis["supervised_learning"]["ridge_regression"]
     add_text(
         doc,
-        f"Ridge Regression 用于预测下月平均 AQI，通过 L2 正则化缓解多污染物特征之间的相关性。最佳 alpha={ridge['best_alpha']}，MAE={ridge['mae']:.4f}，RMSE={ridge['rmse']:.4f}，R2={ridge['r2']:.4f}。"
-        f"与直接使用当前月 AQI 的基线相比，RMSE 从 {ridge['baseline_rmse']:.4f} 降低到 {ridge['rmse']:.4f}。"
+        f"Ridge Regression 用于预测下月平均 AQI，通过 L2 正则化缓解多污染物特征之间的相关性。验证集选择 alpha={ridge['best_alpha']}（验证 RMSE={ridge['validation_rmse']:.4f}），训练集与验证集重训后，隔离测试集 MAE={ridge['mae']:.4f}，RMSE={ridge['rmse']:.4f}，R2={ridge['r2']:.4f}。"
+        f"与直接使用当前月 AQI 的基线相比，RMSE 从 {ridge['baseline_rmse']:.4f} 降低到 {ridge['rmse']:.4f}。下表为验证集参数评估结果。"
     )
     doc.add_picture(str(ASSET_DIR / "model_metrics.png"), width=Inches(6.35))
     add_caption(doc, "图 3 机器学习与预测模型指标")
@@ -685,12 +689,12 @@ def add_visualization_section(doc: Document):
 def add_innovation_section(doc: Document):
     add_heading(doc, "七、创新性与项目特色", 1)
     rows = [
-        ("完整大数据链路", "从数据生成、清洗、仓库、Hadoop/Hive/Spark 到前端展示形成闭环。"),
+        ("可扩展大数据链路", "数据生成、清洗、仓库和前端展示已形成可运行链路；Hadoop/Hive/Spark 接口与脚本已预留，平台闭环待 Docker 验收。"),
         ("机器学习算法", "实现 Logistic Regression 下月污染风险分类，满足优秀等级中的机器学习算法要求。"),
         ("预测分析", "实现 Ridge Regression 下月 AQI 预测，属于时间序列预测方向的创新扩展。"),
         ("参数对比", "K-Means、Logistic Regression、Ridge Regression 均提供参数评估结果。"),
         ("统一数据源", "数据大屏、数据明细、数据集展示和算法分析均使用同一套处理结果，减少前后数据口径不一致。"),
-        ("可复现材料", "提供 Python 脚本、PowerShell 脚本、Hive SQL、Spark 作业和 Markdown 报告。"),
+        ("可复现材料", "数据与算法结果可由 Python 脚本复现；平台部分提供 PowerShell、Hive SQL、Spark 作业和验收脚本，待具备 Docker 后复验。"),
     ]
     add_simple_table(doc, ["特色", "说明"], rows, [2100, 7260])
 
@@ -699,8 +703,8 @@ def add_conclusion_section(doc: Document):
     add_heading(doc, "八、总结与展望", 1)
     add_text(
         doc,
-        "本项目完成了城市空气质量大数据分析与可视化系统的设计和实现，覆盖课程评分细则中课程大作业的主要指标。"
-        "数据层面，项目构建了百万级小时数据和多级仓库表；平台层面，提供 Hadoop/Hive/Spark 一体化部署和执行脚本；算法层面，覆盖处理算法、数据挖掘、机器学习分类和预测分析；展示层面，完成可交互的数据大屏、明细查询、数据集展示和算法分析页面。"
+        "本项目已完成城市空气质量数据生成、处理分析和可视化系统实现。数据层面已构建百万级小时数据和多级仓库表；算法层面已完成处理算法、数据挖掘、机器学习分类和预测分析；展示层面已完成可交互的数据大屏、明细查询、实时数据和算法分析页面。"
+        "平台层面已完成 Hadoop/Hive/Spark 拓扑、Compose 配置、执行脚本和验收脚本，但由于当前机器缺少 Docker，容器启动、HDFS 上传、Hive 查询和 Spark ETL 尚未实际验收。",
     )
     add_text(
         doc,

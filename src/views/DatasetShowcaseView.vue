@@ -7,6 +7,7 @@ import { fetchAirQualityData, getDatasetCities } from '../api'
 import type { DatasetLevel, DatasetRecord } from '../types/air'
 
 const loading = ref(true)
+const errorMessage = ref('')
 const rows = ref<DatasetRecord[]>([])
 const keyword = ref('')
 const selectedCity = ref('')
@@ -18,8 +19,10 @@ const pageSizeOptions = [10, 20, 50, 100]
 const total = ref(0)
 const sortKey = ref<keyof DatasetRecord>('date')
 const sortOrder = ref<1 | -1>(-1)
-const cities = ref<string[]>(getDatasetCities())
+const cities = ref<string[]>([])
 const latestDate = ref('-')
+const querySource = ref('-')
+const sourceUpdatedAt = ref<string | null>(null)
 
 const drawerOpen = ref(false)
 const selectedRow = ref<DatasetRecord | null>(null)
@@ -34,20 +37,39 @@ const levelOptions: Array<{ value: DatasetLevel | ''; label: string }> = [
 
 async function loadData() {
   loading.value = true
-  const result = await fetchAirQualityData({
-    page: page.value,
-    pageSize: pageSize.value,
-    keyword: keyword.value,
-    city: selectedCity.value,
-    level: selectedLevel.value,
-    quarter: selectedQuarter.value,
-    sortKey: sortKey.value,
-    sortOrder: sortOrder.value,
-  })
-  rows.value = result.items
-  total.value = result.total
-  latestDate.value = result.meta.latestDate
-  loading.value = false
+  errorMessage.value = ''
+  try {
+    const result = await fetchAirQualityData({
+      page: page.value,
+      pageSize: pageSize.value,
+      keyword: keyword.value,
+      city: selectedCity.value,
+      level: selectedLevel.value,
+      quarter: selectedQuarter.value,
+      sortKey: sortKey.value,
+      sortOrder: sortOrder.value,
+    })
+    rows.value = result.items
+    total.value = result.total
+    latestDate.value = result.meta.latestDate
+    querySource.value = result.meta.querySource
+    sourceUpdatedAt.value = result.meta.sourceUpdatedAt
+  } catch (error) {
+    rows.value = []
+    total.value = 0
+    errorMessage.value = error instanceof Error ? error.message : '后端查询失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function initialize() {
+  try {
+    cities.value = await getDatasetCities()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '城市列表加载失败'
+  }
+  await loadData()
 }
 
 function onSort(key: keyof DatasetRecord) {
@@ -100,18 +122,28 @@ watch([keyword, selectedCity, selectedLevel, selectedQuarter], () => {
 
 watch([keyword, selectedCity, selectedLevel, selectedQuarter, page, pageSize, sortKey, sortOrder], loadData)
 
-onMounted(loadData)
+onMounted(initialize)
 </script>
 
 <template>
   <div class="relative mx-auto w-full animate-fade-in-up">
+    <div v-if="errorMessage" class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      {{ errorMessage }}。请确认后端服务运行在 http://127.0.0.1:8000。
+    </div>
     <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-slate-900">数据集展示中心</h1>
         <p class="mt-1 text-sm text-slate-500">全局空气质量数据集检索、分页浏览与导出</p>
       </div>
-      <div class="flex gap-4">
+        <div class="flex gap-4">
         <div class="flex flex-col items-end rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-sm">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">当前查询源</span>
+          <span class="text-sm font-bold" :class="querySource === 'spark_export' ? 'text-teal-600' : 'text-amber-600'">
+            {{ querySource === 'spark_export' ? 'Spark 输出' : '本地仓库回退' }}
+          </span>
+          <span v-if="sourceUpdatedAt" class="mt-0.5 text-[10px] text-slate-400">{{ new Date(sourceUpdatedAt).toLocaleString('zh-CN', { hour12: false }) }}</span>
+        </div>
+          <div class="flex flex-col items-end rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-sm">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-500">总数据条数</span>
           <span class="font-mono text-lg font-bold text-slate-900">{{ total }}</span>
         </div>

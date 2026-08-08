@@ -118,8 +118,12 @@ def main() -> None:
     clean = clean_frame(raw)
 
     clean.write.mode("overwrite").partitionBy("year_month", "region").parquet(f"{args.output}/clean_parquet")
-    aggregate_city_day(clean).write.mode("overwrite").parquet(f"{args.output}/city_day_parquet")
-    aggregate_city_month(clean).write.mode("overwrite").parquet(f"{args.output}/city_month_parquet")
+    city_day = aggregate_city_day(clean)
+    city_month = aggregate_city_month(clean)
+    city_day.write.mode("overwrite").parquet(f"{args.output}/city_day_parquet")
+    city_month.write.mode("overwrite").parquet(f"{args.output}/city_month_parquet")
+    city_day.coalesce(1).write.mode("overwrite").option("header", True).csv(f"{args.output}/city_day_csv")
+    city_month.coalesce(1).write.mode("overwrite").option("header", True).csv(f"{args.output}/city_month_csv")
     build_city_topn(clean).coalesce(1).write.mode("overwrite").option("header", True).csv(f"{args.output}/city_topn_csv")
     build_quality_summary(clean).coalesce(1).write.mode("overwrite").option("header", True).csv(f"{args.output}/quality_summary_csv")
 

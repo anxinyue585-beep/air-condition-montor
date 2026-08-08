@@ -9,6 +9,10 @@ const nav = [
   { to: '/data', label: '数据明细' },
   { to: '/dataset', label: '数据集展示' },
   { to: '/analysis', label: '算法分析' },
+  { to: '/spatial', label: '空间分析' },
+  { to: '/warning', label: '污染预警' },
+  { to: '/live', label: '实时数据' },
+  { to: '/lineage', label: '数据血缘' },
   { to: '/about', label: '关于项目' },
 ] as const
 

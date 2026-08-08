@@ -356,15 +356,28 @@ def build_supervised_dataset(rows: list[dict[str, Any]]) -> tuple[list[dict[str,
     return samples, [*SUPERVISED_NUMERIC_FEATURES, "month_sin", "month_cos", *[f"region_{region}" for region in regions]]
 
 
-def train_test_split(samples: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    train, test = [], []
+def temporal_train_validation_test_split(
+    samples: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split by target month so future observations never influence the past.
+
+    Target months February-August are used for training, September-October for
+    hyperparameter selection, and November-December for the final one-time
+    test evaluation.
+    """
+
+    train, validation, test = [], [], []
     for sample in samples:
-        source_month = int(sample["source_month"].split("-")[1])
-        if source_month <= 9:
+        target_month = int(sample["target_month"].split("-")[1])
+        if target_month <= 8:
             train.append(sample)
+        elif target_month <= 10:
+            validation.append(sample)
         else:
             test.append(sample)
-    return train, test
+    if not train or not validation or not test:
+        raise ValueError("temporal split requires non-empty train, validation, and test sets")
+    return train, validation, test
 
 
 def normalize_samples(train: list[dict[str, Any]], test: list[dict[str, Any]]) -> tuple[list[list[float]], list[list[float]], list[float], list[float]]:
@@ -373,6 +386,22 @@ def normalize_samples(train: list[dict[str, Any]], test: list[dict[str, Any]]) -
     train_scaled, means, stds = standardize(train_x)
     test_scaled, _, _ = standardize(test_x, means, stds)
     return train_scaled, test_scaled, means, stds
+
+
+def select_best_ridge_alpha(models: dict[float, tuple[list[float], Metrics, list[float]]]) -> float:
+    return min(models, key=lambda alpha: (models[alpha][1].rmse, models[alpha][1].mae, alpha))
+
+
+def select_best_logistic_lambda(models: dict[float, tuple[list[float], dict[str, float], list[float]]]) -> float:
+    return max(
+        models,
+        key=lambda value: (
+            models[value][1]["f1"],
+            models[value][1]["recall"],
+            models[value][1]["accuracy"],
+            -value,
+        ),
+    )
 
 
 def add_intercept(matrix: list[list[float]]) -> list[list[float]]:
@@ -485,34 +514,44 @@ def classification_metrics(y_true: list[int], probabilities: list[float], thresh
 
 
 def supervised_analysis(samples: list[dict[str, Any]], feature_names: list[str]) -> dict[str, Any]:
-    train, test = train_test_split(samples)
-    train_x, test_x, _, _ = normalize_samples(train, test)
+    train, validation, test = temporal_train_validation_test_split(samples)
+    train_x, validation_x, _, _ = normalize_samples(train, validation)
     train_y_reg = [sample["target_aqi"] for sample in train]
-    test_y_reg = [sample["target_aqi"] for sample in test]
+    validation_y_reg = [sample["target_aqi"] for sample in validation]
     train_y_cls = [sample["target_polluted"] for sample in train]
-    test_y_cls = [sample["target_polluted"] for sample in test]
-
-    baseline_predictions = [sample["current_aqi"] for sample in test]
-    baseline_metrics = regression_metrics(test_y_reg, baseline_predictions)
+    validation_y_cls = [sample["target_polluted"] for sample in validation]
 
     ridge_rows = []
     ridge_models: dict[float, tuple[list[float], Metrics, list[float]]] = {}
     for alpha in [0.0, 0.1, 1.0, 10.0, 100.0]:
         weights = fit_ridge(train_x, train_y_reg, alpha)
-        predictions = predict_linear(test_x, weights)
-        metrics = regression_metrics(test_y_reg, predictions)
+        predictions = predict_linear(validation_x, weights)
+        metrics = regression_metrics(validation_y_reg, predictions)
         ridge_models[alpha] = (weights, metrics, predictions)
         ridge_rows.append(
             {
                 "alpha": alpha,
+                "evaluation_split": "validation",
                 "mae": round(metrics.mae, 4),
                 "rmse": round(metrics.rmse, 4),
                 "r2": round(metrics.r2, 4),
             }
         )
 
-    best_alpha = min(ridge_models, key=lambda alpha: ridge_models[alpha][1].rmse)
-    best_weights, best_metrics, best_predictions = ridge_models[best_alpha]
+    best_alpha = select_best_ridge_alpha(ridge_models)
+
+    final_train = [*train, *validation]
+    final_train_x, test_x, _, _ = normalize_samples(final_train, test)
+    final_train_y_reg = [sample["target_aqi"] for sample in final_train]
+    final_train_y_cls = [sample["target_polluted"] for sample in final_train]
+    test_y_reg = [sample["target_aqi"] for sample in test]
+    test_y_cls = [sample["target_polluted"] for sample in test]
+
+    best_weights = fit_ridge(final_train_x, final_train_y_reg, best_alpha)
+    best_predictions = predict_linear(test_x, best_weights)
+    best_metrics = regression_metrics(test_y_reg, best_predictions)
+    baseline_predictions = [sample["current_aqi"] for sample in test]
+    baseline_metrics = regression_metrics(test_y_reg, baseline_predictions)
 
     pred_rows = []
     for sample, pred in zip(test, best_predictions):
@@ -537,12 +576,13 @@ def supervised_analysis(samples: list[dict[str, Any]], feature_names: list[str])
     logistic_models: dict[float, tuple[list[float], dict[str, float], list[float]]] = {}
     for reg_lambda in [0.0, 0.001, 0.01, 0.1, 1.0]:
         weights = fit_logistic(train_x, train_y_cls, reg_lambda)
-        probabilities = predict_logistic(test_x, weights)
-        metrics = classification_metrics(test_y_cls, probabilities)
+        probabilities = predict_logistic(validation_x, weights)
+        metrics = classification_metrics(validation_y_cls, probabilities)
         logistic_models[reg_lambda] = (weights, metrics, probabilities)
         logistic_rows.append(
             {
                 "lambda": reg_lambda,
+                "evaluation_split": "validation",
                 "accuracy": round(metrics["accuracy"], 4),
                 "precision": round(metrics["precision"], 4),
                 "recall": round(metrics["recall"], 4),
@@ -554,8 +594,10 @@ def supervised_analysis(samples: list[dict[str, Any]], feature_names: list[str])
             }
         )
 
-    best_lambda = max(logistic_models, key=lambda value: (logistic_models[value][1]["f1"], logistic_models[value][1]["accuracy"]))
-    _, best_cls_metrics, best_probabilities = logistic_models[best_lambda]
+    best_lambda = select_best_logistic_lambda(logistic_models)
+    best_cls_weights = fit_logistic(final_train_x, final_train_y_cls, best_lambda)
+    best_probabilities = predict_logistic(test_x, best_cls_weights)
+    best_cls_metrics = classification_metrics(test_y_cls, best_probabilities)
     logistic_pred_rows = []
     for sample, probability in zip(test, best_probabilities):
         logistic_pred_rows.append(
@@ -571,22 +613,32 @@ def supervised_analysis(samples: list[dict[str, Any]], feature_names: list[str])
             }
         )
 
-    write_csv(RIDGE_PARAM_CSV, ridge_rows, ["alpha", "mae", "rmse", "r2"])
+    write_csv(RIDGE_PARAM_CSV, ridge_rows, ["alpha", "evaluation_split", "mae", "rmse", "r2"])
     write_csv(RIDGE_PRED_CSV, pred_rows, ["city", "region", "source_month", "target_month", "actual_next_avg_aqi", "predicted_next_avg_aqi", "absolute_error", "baseline_previous_month_aqi"])
     write_csv(RIDGE_COEF_CSV, coef_rows, ["feature", "coefficient"])
-    write_csv(LOGISTIC_PARAM_CSV, logistic_rows, ["lambda", "accuracy", "precision", "recall", "f1", "tp", "tn", "fp", "fn"])
+    write_csv(LOGISTIC_PARAM_CSV, logistic_rows, ["lambda", "evaluation_split", "accuracy", "precision", "recall", "f1", "tp", "tn", "fp", "fn"])
     write_csv(LOGISTIC_PRED_CSV, logistic_pred_rows, ["city", "region", "source_month", "target_month", "actual_polluted", "predicted_probability", "predicted_polluted", "actual_next_avg_aqi"])
 
     return {
         "dataset": {
             "sample_count": len(samples),
             "train_count": len(train),
+            "validation_count": len(validation),
             "test_count": len(test),
+            "train_target_months": "2025-02..2025-08",
+            "validation_target_months": "2025-09..2025-10",
+            "test_target_months": "2025-11..2025-12",
+            "split_strategy": "chronological_by_target_month",
+            "validation_positive_count": sum(validation_y_cls),
             "test_positive_count": sum(test_y_cls),
             "target": "next_month_avg_aqi / next_month_polluted",
         },
         "ridge_regression": {
             "best_alpha": best_alpha,
+            "selection_split": "validation",
+            "selection_metric": "rmse",
+            "validation_rmse": round(ridge_models[best_alpha][1].rmse, 4),
+            "evaluation_split": "test",
             "mae": round(best_metrics.mae, 4),
             "rmse": round(best_metrics.rmse, 4),
             "r2": round(best_metrics.r2, 4),
@@ -598,6 +650,10 @@ def supervised_analysis(samples: list[dict[str, Any]], feature_names: list[str])
         },
         "logistic_regression": {
             "best_lambda": best_lambda,
+            "selection_split": "validation",
+            "selection_metric": "f1_then_recall",
+            "validation_f1": round(logistic_models[best_lambda][1]["f1"], 4),
+            "evaluation_split": "test",
             "accuracy": round(best_cls_metrics["accuracy"], 4),
             "precision": round(best_cls_metrics["precision"], 4),
             "recall": round(best_cls_metrics["recall"], 4),

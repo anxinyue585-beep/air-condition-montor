@@ -33,6 +33,8 @@ python scripts\build_air_quality_dataset.py
 
 ## Hadoop/Hive/Spark 平台部署
 
+当前状态（2026-07-11）：部署配置和执行脚本已就绪，百万级 CSV 已生成并校验；当前机器缺少 Docker/WSL，尚未完成容器启动、HDFS、Hive 和 Spark 实际验收。请勿将本节材料表述为平台已经跑通。
+
 平台部署材料已经放在项目中：
 
 - Docker Compose 集群配置：`platform/docker-compose.yml`
@@ -44,6 +46,15 @@ python scripts\build_air_quality_dataset.py
 - 平台停止脚本：`scripts/platform_down.ps1`
 - 平台部署报告：`docs/platform_deployment_report.md`
 - 验收记录模板：`docs/platform_verification_record.md`
+- 一键验收与证据采集：`scripts/platform_verify_and_capture.ps1`
+
+完整验收并保存日志：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\platform_verify_and_capture.ps1
+```
+
+每次执行会在 `reports/platform_verification/<时间戳>/` 下保存分步骤日志、完整 transcript 和机器可读的验收摘要。只有 HDFS、Hive、Spark 全部通过时摘要状态才会写为 `passed`。
 
 前置条件：已安装 Docker Desktop 或 Docker Engine，并启用 Docker Compose v2。首次启动需要联网拉取镜像。
 
@@ -110,6 +121,20 @@ powershell -ExecutionPolicy Bypass -File scripts\run_data_analysis_algorithms.ps
 
 ## 前端运行
 
+先创建后端隔离环境并安装依赖：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements-dev.txt
+powershell -ExecutionPolicy Bypass -File scripts\start_backend.ps1
+```
+
+后端接口文档：http://127.0.0.1:8000/docs
+
+主要接口包括 `/api/overview`、`/api/cities`、`/api/records`、`/api/lineage`、`/api/processing/status`、`/api/platform/hive/monthly`、算法接口和实时数据接口。详细说明见 `backend/README.md`。
+
+另开一个终端启动前端：
+
 ```powershell
 npm install
 npm run dev
@@ -120,3 +145,17 @@ npm run dev
 ```powershell
 npm run build
 ```
+
+## Open-Meteo 每日数据链路
+
+项目已增加无需 API Key 的 Open-Meteo 自动采集链路，第一阶段覆盖北京、上海、广州、深圳、成都和杭州：
+
+```powershell
+python scripts\fetch_open_meteo_daily.py
+```
+
+输出包括原始 JSON 归档、幂等历史 CSV、最新快照和运行报告。GitHub Actions 工作流会在每天北京时间 02:30 自动运行，也可以手动触发。
+
+前端 `/live` 路由展示最近一次成功快照；自动任务会在抓取后重新构建前端并上传 `dist` Artifact。
+
+注意：Open-Meteo 空气质量来自 CAMS 模型估算/预报，不是地面监测站实测数据；项目不会将 European AQI 或 US AQI 表述为中国 AQI。完整说明见 `docs/open_meteo_live_data_pipeline.md`。

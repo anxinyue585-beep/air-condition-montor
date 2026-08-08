@@ -1,0 +1,21 @@
+﻿{
+    "status":  "failed",
+    "message":  "The term \u0027docker\u0027 is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.",
+    "run_id":  "20260711-123525",
+    "started_at_utc":  "2026-07-11T04:35:25.3976091Z",
+    "completed_at_utc":  "2026-07-11T04:35:27.4440854Z",
+    "evidence_directory":  "reports/platform_verification/20260711-123525",
+    "steps":  {
+                  "02-dataset-evidence":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.42,
+                                              "log":  "reports/platform_verification/20260711-123525/02-dataset-evidence.log"
+                                          },
+                  "03-docker-preflight":  {
+                                              "status":  "failed",
+                                              "duration_seconds":  0.97,
+                                              "log":  "reports/platform_verification/20260711-123525/03-docker-preflight.log",
+                                              "error":  "The term \u0027docker\u0027 is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again."
+                                          }
+              }
+}

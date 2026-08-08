@@ -1,4 +1,3 @@
-import dataset from '../../data/processed/air_quality_frontend_sample.json'
 import type { DatasetLevel, DatasetRecord } from '../types/air'
 
 export interface FetchDatasetParams {
@@ -19,95 +18,151 @@ export interface FetchDatasetResult {
     latestDate: string
     cityCount: number
     totalRecords: number
+    queryGranularity: string
+    querySource: string
+    sourceUpdatedAt: string | null
   }
 }
 
-function levelFromAqi(aqi: number): DatasetLevel {
-  if (aqi <= 50) return '优'
-  if (aqi <= 100) return '良'
-  return '污染'
+export interface LineageNode {
+  id: string
+  label: string
+  detail: string
+  status: 'passed' | 'pending' | 'failed'
 }
 
-const SOURCE: DatasetRecord[] = (dataset as DatasetRecord[]).map((item) => ({
-  ...item,
-  level: levelFromAqi(item.aqi),
-}))
-const EXTENDED_SOURCE: DatasetRecord[] = [...SOURCE]
-
-function compareValue(a: DatasetRecord, b: DatasetRecord, key: keyof DatasetRecord, order: 1 | -1) {
-  const av = a[key]
-  const bv = b[key]
-  if (typeof av === 'number' && typeof bv === 'number') {
-    return (av - bv) * order
-  }
-  return String(av).localeCompare(String(bv), 'zh') * order
+export interface LineageResult {
+  generated_at_utc: string
+  current_query_source: string
+  nodes: LineageNode[]
+  edges: [string, string][]
+  last_verified_at: string | null
+  verification_status: string
+  verification_message: string
 }
 
-export async function fetchAirQualityData(params: FetchDatasetParams): Promise<FetchDatasetResult> {
-  const {
-    page,
-    pageSize,
-    keyword = '',
-    city = '',
-    level = '',
-    quarter = '',
-    sortKey = 'date',
-    sortOrder = -1,
-  } = params
-
-  let result = [...EXTENDED_SOURCE]
-  const q = keyword.trim().toLowerCase()
-
-  if (q) {
-    result = result.filter(
-      (item) =>
-        item.id.toLowerCase().includes(q) ||
-        item.city.toLowerCase().includes(q) ||
-        item.date.toLowerCase().includes(q),
-    )
-  }
-  if (city) {
-    result = result.filter((item) => item.city === city)
-  }
-  if (level) {
-    result = result.filter((item) => levelFromAqi(item.aqi) === level)
-  }
-  if (quarter) {
-    const quarterMonths: Record<'Q1' | 'Q2' | 'Q3' | 'Q4', [number, number]> = {
-      Q1: [1, 3],
-      Q2: [4, 6],
-      Q3: [7, 9],
-      Q4: [10, 12],
-    }
-    const [startMonth, endMonth] = quarterMonths[quarter]
-    result = result.filter((item) => {
-      const month = Number(item.date.slice(5, 7))
-      return month >= startMonth && month <= endMonth
-    })
-  }
-
-  result.sort((a, b) => compareValue(a, b, sortKey, sortOrder))
-
-  const total = result.length
-  const start = (page - 1) * pageSize
-  const items = result.slice(start, start + pageSize)
-
-  const latestDate = [...EXTENDED_SOURCE].sort((a, b) => b.date.localeCompare(a.date, 'zh'))[0]?.date ?? '-'
-  const cityCount = new Set(EXTENDED_SOURCE.map((item) => item.city)).size
-
-  await new Promise((resolve) => setTimeout(resolve, 550))
-
-  return {
-    items,
-    total,
-    meta: {
-      latestDate,
-      cityCount,
-      totalRecords: EXTENDED_SOURCE.length,
-    },
-  }
+export interface ProcessingStatus {
+  current_query_source: string
+  current_query_updated_at: string | null
+  platform_export_available: boolean
+  platform_manifest: Record<string, unknown> | null
+  latest_platform_verification: Record<string, unknown> | null
+  open_meteo: { available: boolean; updated_at: string | null }
 }
 
-export function getDatasetCities() {
-  return [...new Set(EXTENDED_SOURCE.map((item) => item.city))]
+export interface HiveMonthlyResult {
+  available: boolean
+  source: string
+  updated_at: string | null
+  items: Array<Record<string, string>>
+  total: number
+}
+
+export interface SpatialCity {
+  city: string
+  province: string
+  region: string
+  longitude: number
+  latitude: number
+  avg_aqi: number
+  avg_pm25: number
+  avg_pm10: number
+  z_aqi: number
+  spatial_lag_z: number
+  local_moran_i: number
+  p_value: number
+  significant: boolean
+  cluster: 'High-High' | 'Low-Low' | 'High-Low' | 'Low-High' | 'Not significant'
+  neighbors: string[]
+}
+
+export interface SpatialAnalysisResult {
+  status: string
+  method: {
+    year: number
+    indicator: string
+    city_count: number
+    spatial_weights: string
+    k: number
+    distance: string
+    permutations: number
+    random_seed: number
+    significance_threshold: number
+    source: string
+  }
+  global_moran: {
+    observed_i: number
+    expected_i: number
+    pseudo_p_value: number
+    significant: boolean
+    interpretation: string
+    permutation_mean: number
+  }
+  cluster_counts: Record<string, number>
+  cities: SpatialCity[]
+  generated_at_utc: string
+}
+
+export interface WarningFactor { feature: string; label: string; value: number; contribution: number; direction: 'increase' | 'decrease' }
+export interface WarningCity {
+  datetime: string; city: string; province: string; region: string; current_aqi: number; current_stage: string
+  probability: number; warning_level: 'red' | 'orange' | 'yellow' | 'blue' | 'none'; predicted: number; actual: number
+  explanations: WarningFactor[]; explanation_text: string; timeline: Array<{ datetime: string; probability: number; actual: number }>
+}
+export interface PollutionWarningResult {
+  status: string; generated_at_utc: string; task: string
+  model: { algorithm: string; split: string; selected_lambda: number; selected_threshold: number; test_metrics: Record<string, number> }
+  summary: { city_count: number; warning_level_counts: Record<string, number>; highest_risk_city: string; highest_probability: number }
+  cities: WarningCity[]
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+
+async function getJson<T>(path: string, params?: URLSearchParams): Promise<T> {
+  const query = params?.toString()
+  const response = await fetch(`${API_BASE}${path}${query ? `?${query}` : ''}`)
+  if (!response.ok) {
+    const detail = await response.text()
+    throw new Error(`API ${response.status}: ${detail}`)
+  }
+  return response.json() as Promise<T>
+}
+
+export function fetchAirQualityData(params: FetchDatasetParams): Promise<FetchDatasetResult> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    page_size: String(params.pageSize),
+    keyword: params.keyword ?? '',
+    city: params.city ?? '',
+    level: params.level ?? '',
+    quarter: params.quarter ?? '',
+    sort_key: String(params.sortKey ?? 'date'),
+    sort_order: (params.sortOrder ?? -1) === 1 ? 'asc' : 'desc',
+  })
+  return getJson<FetchDatasetResult>('/records', query)
+}
+
+export async function getDatasetCities(): Promise<string[]> {
+  const result = await getJson<{ items: string[]; total: number }>('/cities')
+  return result.items
+}
+
+export function getLineage(): Promise<LineageResult> {
+  return getJson<LineageResult>('/lineage')
+}
+
+export function getProcessingStatus(): Promise<ProcessingStatus> {
+  return getJson<ProcessingStatus>('/processing/status')
+}
+
+export function getHiveMonthly(limit = 12): Promise<HiveMonthlyResult> {
+  return getJson<HiveMonthlyResult>('/platform/hive/monthly', new URLSearchParams({ limit: String(limit) }))
+}
+
+export function getSpatialAnalysis(): Promise<SpatialAnalysisResult> {
+  return getJson<SpatialAnalysisResult>('/analysis/spatial')
+}
+
+export function getPollutionWarnings(): Promise<PollutionWarningResult> {
+  return getJson<PollutionWarningResult>('/analysis/pollution-warning')
 }
