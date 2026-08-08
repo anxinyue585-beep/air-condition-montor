@@ -1,0 +1,16 @@
+﻿{
+    "status":  "failed",
+    "message":  "Command exited with code ",
+    "run_id":  "20260711-123458",
+    "started_at_utc":  "2026-07-11T04:34:58.5138738Z",
+    "completed_at_utc":  "2026-07-11T04:34:59.6218921Z",
+    "evidence_directory":  "reports/platform_verification/20260711-123458",
+    "steps":  {
+                  "02-dataset-evidence":  {
+                                              "status":  "failed",
+                                              "duration_seconds":  0.42,
+                                              "log":  "reports/platform_verification/20260711-123458/02-dataset-evidence.log",
+                                              "error":  "Command exited with code "
+                                          }
+              }
+}

@@ -4,6 +4,7 @@ import ChartLine from '../components/ChartLine.vue'
 import ChartParallel from '../components/ChartParallel.vue'
 import ChartPie from '../components/ChartPie.vue'
 import ChartRadar from '../components/ChartRadar.vue'
+import DataPipelineStatus from '../components/DataPipelineStatus.vue'
 import FilterBar from '../components/FilterBar.vue'
 import KpiCard from '../components/KpiCard.vue'
 import { useAirQualityData } from '../composables/useAirQualityData'
@@ -21,6 +22,7 @@ const {
 
 <template>
   <div class="space-y-6">
+    <DataPipelineStatus />
     <FilterBar v-model:city="selectedCity" v-model:time="selectedTime" />
 
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">

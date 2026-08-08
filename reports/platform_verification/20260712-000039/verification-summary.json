@@ -1,0 +1,26 @@
+﻿{
+    "status":  "failed",
+    "message":  " Container aq-spark-worker Running ",
+    "run_id":  "20260712-000039",
+    "started_at_utc":  "2026-07-11T16:00:39.3705726Z",
+    "completed_at_utc":  "2026-07-11T16:00:41.1309066Z",
+    "evidence_directory":  "reports/platform_verification/20260712-000039",
+    "steps":  {
+                  "02-dataset-evidence":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.49,
+                                              "log":  "reports/platform_verification/20260712-000039/02-dataset-evidence.log"
+                                          },
+                  "03-docker-preflight":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.35,
+                                              "log":  "reports/platform_verification/20260712-000039/03-docker-preflight.log"
+                                          },
+                  "04-platform-start":  {
+                                            "status":  "failed",
+                                            "duration_seconds":  0.36,
+                                            "log":  "reports/platform_verification/20260712-000039/04-platform-start.log",
+                                            "error":  " Container aq-spark-worker Running "
+                                        }
+              }
+}

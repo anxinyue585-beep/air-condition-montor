@@ -1,0 +1,31 @@
+﻿{
+    "status":  "failed",
+    "message":  "Spark Master did not become ready after 300 seconds.",
+    "run_id":  "20260712-000135",
+    "started_at_utc":  "2026-07-11T16:01:35.0842507Z",
+    "completed_at_utc":  "2026-07-11T16:06:49.8045104Z",
+    "evidence_directory":  "reports/platform_verification/20260712-000135",
+    "steps":  {
+                  "02-dataset-evidence":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.43,
+                                              "log":  "reports/platform_verification/20260712-000135/02-dataset-evidence.log"
+                                          },
+                  "03-docker-preflight":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.3,
+                                              "log":  "reports/platform_verification/20260712-000135/03-docker-preflight.log"
+                                          },
+                  "04-platform-start":  {
+                                            "status":  "passed",
+                                            "duration_seconds":  0.94,
+                                            "log":  "reports/platform_verification/20260712-000135/04-platform-start.log"
+                                        },
+                  "05-service-readiness":  {
+                                               "status":  "failed",
+                                               "duration_seconds":  312.58,
+                                               "log":  "reports/platform_verification/20260712-000135/05-service-readiness.log",
+                                               "error":  "Spark Master did not become ready after 300 seconds."
+                                           }
+              }
+}

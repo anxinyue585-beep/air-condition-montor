@@ -1,0 +1,77 @@
+name: Fetch Open-Meteo daily data
+
+on:
+  schedule:
+    # 18:30 UTC = 02:30 Asia/Shanghai on the following calendar day.
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: open-meteo-daily
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend and test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+
+      - name: Run ingestion tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Fetch latest weather and air quality
+        run: python scripts/fetch_open_meteo_daily.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build frontend with latest snapshot
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload raw provider responses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-meteo-raw-${{ github.run_id }}
+          path: data/raw/open_meteo/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload deployable frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-meteo-frontend-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit normalized data
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/live/open_meteo_observations.csv data/live/open_meteo_latest.json data/live/open_meteo_run_report.json
+          if git diff --cached --quiet; then
+            echo "No normalized data changes to commit."
+          else
+            git commit -m "data: update Open-Meteo daily snapshot"
+            git push
+          fi

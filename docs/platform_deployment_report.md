@@ -1,8 +1,10 @@
-# Hadoop/Hive/Spark 平台部署报告
+# Hadoop/Hive/Spark 平台部署设计与待验收说明
+
+> 当前状态（2026-07-11）：百万级 CSV 已生成并完成文件校验；Docker CLI、Docker Engine 和 WSL 均不可用，因此尚未启动任何 Hadoop/Hive/Spark 容器。本文件描述目标架构与执行步骤，不作为平台已部署成功的证明。实际证据见 `docs/platform_verification_record.md` 和 `reports/platform_verification/`。
 
 ## 1. 部署目标
 
-本项目为城市空气质量百万级数据集搭建 Hadoop/Hive/Spark 一体化实验平台，用于完成课程评分中的“平台部署 Hadoop/Hive/Spark”指标。平台承担以下职责：
+本项目为城市空气质量百万级数据集设计 Hadoop/Hive/Spark 一体化实验平台，目标是完成课程评分中的“平台部署 Hadoop/Hive/Spark”指标。平台计划承担以下职责：
 
 - Hadoop HDFS：存储 `air_quality_clean.csv` 百万级清洗数据。
 - Hive：建立外部表和聚合分析表，支持 SQL 查询。
@@ -40,7 +42,7 @@
 powershell -ExecutionPolicy Bypass -File scripts\platform_up.ps1
 ```
 
-启动后可访问：
+成功启动后应可访问：
 
 - Hadoop NameNode：http://localhost:9870
 - YARN ResourceManager：http://localhost:8088
@@ -71,7 +73,7 @@ Hive SQL 文件：
 sql/hive_air_quality.sql
 ```
 
-创建的核心表：
+计划创建的核心表：
 
 | 表名 | 说明 |
 |---|---|
@@ -91,7 +93,7 @@ Spark 作业文件：
 scripts/spark_air_quality_etl.py
 ```
 
-Spark 输出路径：
+计划生成的 Spark 输出路径：
 
 ```text
 /warehouse/air_quality/spark/clean_parquet
@@ -107,7 +109,7 @@ Spark 输出路径：
 powershell -ExecutionPolicy Bypass -File scripts\platform_smoke_check.ps1
 ```
 
-建议在课程报告或答辩视频中展示以下结果：
+平台实际跑通后，应在课程报告或答辩视频中展示以下结果；当前均无通过证据：
 
 1. NameNode 页面可看到 HDFS 正常运行。
 2. HDFS `/warehouse/air_quality/clean` 下存在 `air_quality_clean.csv`。
@@ -125,12 +127,12 @@ powershell -ExecutionPolicy Bypass -File scripts\platform_down.ps1
 
 | 评分要求 | 项目证据 |
 |---|---|
-| Hadoop 平台部署 | `platform/docker-compose.yml` 中 NameNode、DataNode、YARN 配置 |
-| HDFS 数据存储 | `scripts/upload_to_hdfs.ps1` 上传百万级 CSV 到 HDFS |
-| Hive 数据仓库 | `sql/hive_air_quality.sql` 创建外部表、月聚合表、Top-N 表 |
-| Spark 数据处理 | `scripts/spark_air_quality_etl.py` 读取 HDFS、清洗、缓存、分区写 Parquet |
-| 可验证部署 | `scripts/platform_smoke_check.ps1` 和本报告中的验收命令 |
+| Hadoop 平台部署 | 已有 NameNode、DataNode、YARN 配置；容器运行待验收 |
+| HDFS 数据存储 | 已有百万级 CSV 和上传脚本；HDFS 文件存在性待验收 |
+| Hive 数据仓库 | 已有外部表、月聚合表、Top-N SQL；真实查询结果待验收 |
+| Spark 数据处理 | 已有读取 HDFS、清洗、缓存、分区写 Parquet 作业；执行结果待验收 |
+| 可验证部署 | 已有一键证据脚本；当前摘要状态为 `failed`，原因为缺少 Docker |
 
-## 7. 报告可写入结论
+## 7. 当前可写入报告的结论
 
-本项目已完成 Hadoop/Hive/Spark 实验平台部署设计：HDFS 负责百万级空气质量数据存储，Hive 负责数据仓库建表和 SQL 聚合查询，Spark 负责分布式清洗、分区、缓存和聚合输出。平台具备明确的服务拓扑、启动脚本、数据上传脚本、Hive SQL、Spark 作业和验收命令，可支撑课程大作业的平台部署评分项。
+本项目已完成 Hadoop/Hive/Spark 实验平台的拓扑设计、Docker Compose 配置、HDFS 上传脚本、Hive SQL、Spark ETL 和验收脚本。百万级 CSV 前置检查已通过，但当前机器缺少 Docker，尚未获得容器运行、HDFS 文件、Hive 行数查询和 Spark 输出证据，因此平台部署评分项仍处于“材料就绪、运行待验收”状态。

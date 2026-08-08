@@ -25,6 +25,26 @@ const router = createRouter({
       component: () => import('../views/AnalysisView.vue'),
     },
     {
+      path: '/spatial',
+      name: 'spatial',
+      component: () => import('../views/SpatialMapView.vue'),
+    },
+    {
+      path: '/warning',
+      name: 'warning',
+      component: () => import('../views/PollutionWarningView.vue'),
+    },
+    {
+      path: '/live',
+      name: 'live',
+      component: () => import('../views/LiveDataView.vue'),
+    },
+    {
+      path: '/lineage',
+      name: 'lineage',
+      component: () => import('../views/LineageView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       component: () => import('../views/AboutView.vue'),

@@ -1,0 +1,55 @@
+﻿{
+    "status":  "passed",
+    "message":  "HDFS, Hive, and Spark acceptance checks completed successfully.",
+    "run_id":  "20260712-003540",
+    "started_at_utc":  "2026-07-11T16:35:40.1600497Z",
+    "completed_at_utc":  "2026-07-11T16:37:49.0394767Z",
+    "evidence_directory":  "reports/platform_verification/20260712-003540",
+    "steps":  {
+                  "02-dataset-evidence":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.45,
+                                              "log":  "reports/platform_verification/20260712-003540/02-dataset-evidence.log"
+                                          },
+                  "03-docker-preflight":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  0.35,
+                                              "log":  "reports/platform_verification/20260712-003540/03-docker-preflight.log"
+                                          },
+                  "04-platform-start":  {
+                                            "status":  "passed",
+                                            "duration_seconds":  1.08,
+                                            "log":  "reports/platform_verification/20260712-003540/04-platform-start.log"
+                                        },
+                  "05-service-readiness":  {
+                                               "status":  "passed",
+                                               "duration_seconds":  7.41,
+                                               "log":  "reports/platform_verification/20260712-003540/05-service-readiness.log"
+                                           },
+                  "06-hdfs-upload":  {
+                                         "status":  "passed",
+                                         "duration_seconds":  19.33,
+                                         "log":  "reports/platform_verification/20260712-003540/06-hdfs-upload.log"
+                                     },
+                  "07-hive-queries":  {
+                                          "status":  "passed",
+                                          "duration_seconds":  31.55,
+                                          "log":  "reports/platform_verification/20260712-003540/07-hive-queries.log"
+                                      },
+                  "08-spark-etl":  {
+                                       "status":  "passed",
+                                       "duration_seconds":  43.12,
+                                       "log":  "reports/platform_verification/20260712-003540/08-spark-etl.log"
+                                   },
+                  "09-export-platform-results":  {
+                                                     "status":  "passed",
+                                                     "duration_seconds":  10.89,
+                                                     "log":  "reports/platform_verification/20260712-003540/09-export-platform-results.log"
+                                                 },
+                  "10-final-acceptance":  {
+                                              "status":  "passed",
+                                              "duration_seconds":  14.6,
+                                              "log":  "reports/platform_verification/20260712-003540/10-final-acceptance.log"
+                                          }
+              }
+}

@@ -1,0 +1,20 @@
+﻿{
+    "status":  "passed",
+    "exported_at_utc":  "2026-07-11T16:37:34.1936258Z",
+    "source":  {
+                   "hdfs_root":  "/warehouse/air_quality/spark",
+                   "hive_database":  "air_quality"
+               },
+    "outputs":  {
+                    "spark_city_day":  "data/platform_exports/spark/air_quality_city_day.csv",
+                    "spark_city_month":  "data/platform_exports/spark/air_quality_city_month.csv",
+                    "spark_city_topn":  "data/platform_exports/spark/air_quality_city_topn.csv",
+                    "spark_quality_summary":  "data/platform_exports/spark/quality_summary.csv",
+                    "hive_city_month":  "data/platform_exports/hive/air_quality_city_month.csv"
+                },
+    "row_counts":  {
+                       "spark_city_day":  21900,
+                       "spark_city_month":  720,
+                       "hive_city_month":  720
+                   }
+}

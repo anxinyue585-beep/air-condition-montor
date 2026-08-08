@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-30 04:11:13",
+  "generated_at": "2026-07-11 12:26:32",
   "input_dataset": "data\\warehouse\\air_quality_city_month.csv",
   "rubric_mapping": [
     {
@@ -160,16 +160,26 @@
   "supervised_learning": {
     "dataset": {
       "sample_count": 660,
-      "train_count": 540,
+      "train_count": 420,
+      "validation_count": 120,
       "test_count": 120,
+      "train_target_months": "2025-02..2025-08",
+      "validation_target_months": "2025-09..2025-10",
+      "test_target_months": "2025-11..2025-12",
+      "split_strategy": "chronological_by_target_month",
+      "validation_positive_count": 4,
       "test_positive_count": 17,
       "target": "next_month_avg_aqi / next_month_polluted"
     },
     "ridge_regression": {
-      "best_alpha": 10.0,
-      "mae": 0.8495,
-      "rmse": 1.0608,
-      "r2": 0.9977,
+      "best_alpha": 0.1,
+      "selection_split": "validation",
+      "selection_metric": "rmse",
+      "validation_rmse": 1.5006,
+      "evaluation_split": "test",
+      "mae": 0.9579,
+      "rmse": 1.1784,
+      "r2": 0.9972,
       "baseline_mae": 7.245,
       "baseline_rmse": 7.3321,
       "parameter_eval": "data\\analysis_results\\ridge_parameter_eval.csv",
@@ -178,6 +188,10 @@
     },
     "logistic_regression": {
       "best_lambda": 0.0,
+      "selection_split": "validation",
+      "selection_metric": "f1_then_recall",
+      "validation_f1": 0.4,
+      "evaluation_split": "test",
       "accuracy": 0.9583,
       "precision": 1.0,
       "recall": 0.7059,
