@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
-  "started_at_utc": "2026-08-31T22:58:54+00:00",
-  "completed_at_utc": "2026-08-31T22:58:59+00:00",
+  "started_at_utc": "2026-09-01T21:14:23+00:00",
+  "completed_at_utc": "2026-09-01T21:14:25+00:00",
   "requested_city_count": 6,
   "success_count": 6,
   "failure_count": 0,
-  "history_row_count": 150,
+  "history_row_count": 156,
   "errors": []
 }
